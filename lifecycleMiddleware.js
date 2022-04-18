@@ -9,6 +9,7 @@ export const functions = {};
 
 export async function importFromPath(extractedBundlePath) {
   const dbCollectionDirs = await fsPromises.readdir(path.resolve(extractedBundlePath,'db'));
+  dbCollectionDirs.push('default');
   await Promise.all(dbCollectionDirs.map(async collectionDir => {
     try {
       rules[collectionDir] = await import(path.resolve(extractedBundlePath, 'db', collectionDir, 'rules.js'))
@@ -39,7 +40,7 @@ export async function importFromPath(extractedBundlePath) {
 
   const bundleHostingPath = path.resolve(extractedBundlePath,'hosting')
   const serverHostingPath = path.resolve(process.cwd(),'.jsdb','hosting')
-
+  console.log({rules, triggers, functions});
   try {
     if(bundleHostingPath !== serverHostingPath) {
       console.log('Copy hosting from', bundleHostingPath, serverHostingPath);

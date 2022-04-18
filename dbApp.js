@@ -25,13 +25,14 @@ app.use(async (req, res, next) => {
   if (!ruleFunction) {
     console.warn(`No rule defined for ${collection} method ${method}`);
   } else {
+    console.log('Running function:', ruleFunction.toString());
     try {
       const ruleResult = await ruleFunction({collection, user: req.user, req, ...req.body});
       if(ruleResult) {
         req.excludeFields = ruleResult?.excludeFields;
         req.where = ruleResult?.where;
       } else {
-        return res.status(401).send({message:'Unauthorized'});
+        return res.status(401).send({message:'Unauthorized!'});
       }
     } catch (e) {
       console.error(e);
