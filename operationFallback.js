@@ -1,0 +1,18 @@
+export default {
+  'filter' : 'read',
+  'find' : 'read',
+  'map' : 'read',
+  'getAll' : 'read',
+  'forEach' : 'read',
+  'entries' : 'read',
+  'values' : 'read',
+  'has' : 'read',
+  'keys' : 'read',
+  'push' : 'write',
+  'size' : 'read',
+  'length' : 'read',
+  'clear' : 'write',
+  'delete' : 'write',
+  'set' : 'write',
+  'get' : 'read',
+}

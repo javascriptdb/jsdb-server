@@ -1,20 +1,25 @@
 {
-  "name": "javascriptdb",
-  "version": "1.0.0",
+  "name": "@jsdb/server",
+  "version": "0.0.3",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "author": "jpcapdevila",
-  "license": "ISC",
+  "license": "SSPL",
   "dependencies": {
+    "adm-zip": "^0.5.9",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
     "express": "^4.17.3",
+    "express-rate-limit": "^6.3.0",
     "jsonwebtoken": "^8.5.1",
     "lodash-es": "^4.17.21",
     "mongodb": "^4.4.1",
-    "node-fetch": "^3.2.3"
+    "node-fetch": "^3.2.3",
+    "passport": "^0.5.2",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0",
+    "vm2": "^3.9.9"
   }
 }

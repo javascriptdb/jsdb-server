@@ -1,2 +1,11 @@
 /node_modules/
 .idea
+.service-accounts
+.env
+.env.*
+!.env.example
+/jsdbbundle/
+/jsdbbundle.zip
+/uploads/
+/.jsdb-temp/
+/.service-accounts/
