@@ -11,7 +11,7 @@ import {default as db} from './db.js'; // Start mongo connection
 import authApp from './authApp.js';
 import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
-import {importFromBase64, importFromPath} from "./lifecycleMiddleware.js";
+import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
 
 export const app = express();
 
@@ -66,6 +66,15 @@ const port = process.env.PORT || 3001;
 app.use('/auth', authApp);
 app.use('/db', dbApp);
 app.use('/functions', functionsApp);
+app.use('/__discovery', (req,res) => {
+  const response = JSON.parse(JSON.stringify({rules, triggers, functions},(key, value) => {
+    if(typeof value === 'function') {
+      return 'fn'
+    }
+    return value;
+  }))
+  res.send(response)
+})
 
 const hostingPath = path.resolve(url.fileURLToPath(entryPointUrl), '../.jsdb/hosting');
 
