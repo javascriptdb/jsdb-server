@@ -1,6 +1,6 @@
 {
   "name": "@jsdb/server",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "main": "server.js",
   "type": "module",

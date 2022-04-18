@@ -8,7 +8,7 @@ app.post('/:functionPath', async function (req,res,next){
     if(!fn) {
       res.sendStatus(404);
     } else {
-      res.send(await fn({user: req.user, data: req.body}));
+      res.send(await fn({req, user: req.user, data: req.body}));
     }
   } catch (e) {
     console.error(e);
