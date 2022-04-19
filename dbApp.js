@@ -32,7 +32,7 @@ app.use(async (req, res, next) => {
         req.excludeFields = ruleResult?.excludeFields;
         req.where = ruleResult?.where;
       } else {
-        return res.status(401).send({message:'Unauthorized!'});
+        return res.status(401).send({message:'Unauthorized!',fn:ruleFunction.toString()});
       }
     } catch (e) {
       console.error(e);
