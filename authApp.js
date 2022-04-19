@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import JwtStrategy from "passport-jwt";
 import passport from "passport";
 import {Strategy as localStrategy} from 'passport-local';
+import bcrypt from "bcryptjs";
 
 const app = express();
 
@@ -33,6 +34,7 @@ passport.use(
     },
     async (email, password, done) => {
       try {
+        password = bcrypt.hashSync(password, 8);
         const user = {credentials: {email, password}};
         const result = await db.collection('users').insertOne(user);
         return done(null, {email, _id: result.insertedId});
@@ -52,7 +54,11 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        const user = await db.collection('users').findOne({credentials: {email, password}});
+        const user = await db.collection('users').findOne({'credentials.email': email});
+
+        if(!bcrypt.compareSync(password, user.credentials.password)){
+          return done(null, false, {message: 'Invalid password'})
+        }
 
         if (!user) {
           return done(null, false, {message: 'User not found'});

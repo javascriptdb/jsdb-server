@@ -1,6 +1,6 @@
 {
   "name": "@jsdb/server",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "",
   "main": "server.js",
   "type": "module",
@@ -9,6 +9,7 @@
   "license": "SSPL",
   "dependencies": {
     "adm-zip": "^0.5.9",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
