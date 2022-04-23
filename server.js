@@ -5,13 +5,19 @@ import fs from 'fs';
 import path from "path";
 import rateLimit from 'express-rate-limit'
 import passport from "passport";
+import { WebSocketServer } from 'ws';
 import 'dotenv/config'
 import {default as db} from './db.js'; // Start mongo connection
-
 import authApp from './authApp.js';
 import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
 import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
+
+const wsServer = new WebSocketServer({ noServer: true });
+wsServer.on('connection', socket => {
+  socket.on('message', message => console.log('message', message.toString()));
+  socket.send('Hi Hi Hi from server!');
+});
 
 export const app = express();
 
@@ -82,14 +88,19 @@ if (fs.existsSync(hostingPath)) {
   app.use(express.static(hostingPath, {
     fallthrough: true
   }));
-  app.use('*', function (req, res) {
-    if(!res.finished) res.sendFile(path.resolve(hostingPath, 'index.html'));
-  })
+  // app.use('*', function (req, res) {
+  //   if(!res.finished) res.sendFile(path.resolve(hostingPath, 'index.html'));
+  // })
 }
 
 export function start() {
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`Listening on port ${port}`)
+  });
+  server.on('upgrade', (request, socket, head) => {
+    wsServer.handleUpgrade(request, socket, head, socket => {
+      wsServer.emit('connection', socket, request);
+    });
   });
 }
 
