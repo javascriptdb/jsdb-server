@@ -11,12 +11,46 @@ import {default as db} from './db.js'; // Start mongo connection
 import authApp from './authApp.js';
 import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
+import EventEmitter from 'events';
+import _ from 'lodash-es';
 import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
+import {ObjectID} from "mongodb";
 
 const wsServer = new WebSocketServer({ noServer: true });
+const realtimeListeners = new EventEmitter();
+
+function documentId(id) {
+  return ObjectID.isValid(id) ? ObjectID(id) : id;
+}
+
 wsServer.on('connection', socket => {
-  socket.on('message', message => console.log('message', message.toString()));
-  socket.send('Hi Hi Hi from server!');
+  socket.on('message', async message => {
+    try {
+      const parsedMessage = JSON.parse(message);
+      if(parsedMessage.operation === 'get') {
+        const {collection, id, path = []} = parsedMessage;
+        const eventName = `${collection}.${id}`;
+        function documentChangeHandler(documentData) {
+          let value;
+          if(path.length > 0) {
+            value = _.get(documentData, path);
+          } else {
+            value = documentData;
+          }
+          socket.send(JSON.stringify({
+            fullPath: `${collection}.${id}` + (path.length > 0 ?  `.${path.join('.')}` : ''),
+            value,
+            operation: 'documentChange'
+          }));
+        }
+        const document = await db.collection(collection).findOne({_id: documentId(id)});
+        documentChangeHandler(document)
+        realtimeListeners.on(eventName, documentChangeHandler)
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
 });
 
 export const app = express();
@@ -55,11 +89,13 @@ app.use(express.json({
     } else {
       return value;
     }
-  }
+  },
+  limit: '1mb'
 }));
 
 app.use((req, res, next) => {
   req.db = db;
+  req.realtimeListeners = realtimeListeners;
   const authorization = req.get('Authorization');
   if (authorization) {
     passport.authenticate('jwt', { session: false })(req, res, next);
@@ -88,9 +124,9 @@ if (fs.existsSync(hostingPath)) {
   app.use(express.static(hostingPath, {
     fallthrough: true
   }));
-  // app.use('*', function (req, res) {
-  //   if(!res.finished) res.sendFile(path.resolve(hostingPath, 'index.html'));
-  // })
+  app.use('*', function (req, res) {
+    if(!res.finished) res.sendFile(path.resolve(hostingPath, 'index.html'));
+  })
 }
 
 export function start() {

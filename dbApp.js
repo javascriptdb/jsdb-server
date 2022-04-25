@@ -183,6 +183,8 @@ app.post('/delete', async (req,res,next) => {
     } else {
       result = await db.collection(collection).deleteOne({"_id": documentId(id)});
     }
+    const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
+    req.realtimeListeners.emit(`${collection}.${id}`,documentData);
     res.result = result;
     res.send({value: result.deletedCount > 0});
     next();
@@ -203,7 +205,9 @@ app.post('/set', async (req, res, next) => {
     } else {
       result = await db.collection(collection).updateOne({"_id": documentId(id)}, {'$set': value}, {upsert: true});
     }
-    res.result = result
+    res.result = result;
+    const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
+    req.realtimeListeners.emit(`${collection}.${id}`,documentData);
     res.sendStatus(200)
     next();
   } catch (e) {
