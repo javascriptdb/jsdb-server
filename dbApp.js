@@ -25,7 +25,6 @@ app.use(async (req, res, next) => {
   if (!ruleFunction) {
     console.warn(`No rule defined for ${collection} method ${method}`);
   } else {
-    console.log('Running function:', ruleFunction.toString());
     try {
       const ruleResult = await ruleFunction({collection, user: req.user, req, ...req.body});
       if(ruleResult) {
@@ -141,8 +140,13 @@ app.post('/push', async (req, res, next) => {
     const {collection, value} = req.body;
     const result = await db.collection(collection).insertOne(value);
     const count = await db.collection(collection).estimatedDocumentCount();
+
     req.insertedId = result.insertedId;
     res.send({value:count});
+
+    const documentData = await db.collection(collection).findOne({"_id": documentId(result.insertedId)});
+    req.realtimeListeners.emit(collection, {event:'add',document: documentData})
+
     next();
   } catch (e) {
     console.error(e);
@@ -166,6 +170,7 @@ app.post('/clear', async (req,res,next) => {
   try {
     const {collection} = req.body;
     await db.collection(collection).drop();
+    req.realtimeListeners.emit(collection, {event:'drop'})
     res.sendStatus(200);
     next();
   } catch (e) {
@@ -180,11 +185,16 @@ app.post('/delete', async (req,res,next) => {
     if(path?.length > 0) {
       const dotedPath = path.join('.');
       result = await db.collection(collection).updateOne({"_id": documentId(id)}, {'$unset': {[dotedPath]:""}}, {upsert: false});
+      const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
+      req.realtimeListeners.emit(`${collection}.${id}`,documentData);
+      req.realtimeListeners.emit(collection, {event:'edit',document: documentData})
     } else {
+      const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
       result = await db.collection(collection).deleteOne({"_id": documentId(id)});
+      req.realtimeListeners.emit(`${collection}.${id}`,null);
+      req.realtimeListeners.emit(collection, {event:'delete',document: documentData})
     }
-    const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
-    req.realtimeListeners.emit(`${collection}.${id}`,documentData);
+
     res.result = result;
     res.send({value: result.deletedCount > 0});
     next();
@@ -207,6 +217,11 @@ app.post('/set', async (req, res, next) => {
     }
     res.result = result;
     const documentData = await db.collection(collection).findOne({"_id": documentId(id)});
+    if(result.upsertedCount > 0) { // It was new
+      req.realtimeListeners.emit(collection, {event:'add',document: documentData})
+    } else { //Modified existing one
+      req.realtimeListeners.emit(collection, {event:'edit',document: documentData})
+    }
     req.realtimeListeners.emit(`${collection}.${id}`,documentData);
     res.sendStatus(200)
     next();

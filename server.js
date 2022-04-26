@@ -15,6 +15,7 @@ import EventEmitter from 'events';
 import _ from 'lodash-es';
 import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
 import {ObjectID} from "mongodb";
+import {VM} from "vm2";
 
 const wsServer = new WebSocketServer({ noServer: true });
 const realtimeListeners = new EventEmitter();
@@ -23,12 +24,14 @@ function documentId(id) {
   return ObjectID.isValid(id) ? ObjectID(id) : id;
 }
 
+// TODO : move this somewhere proper
+
 wsServer.on('connection', socket => {
   socket.on('message', async message => {
     try {
       const parsedMessage = JSON.parse(message);
       if(parsedMessage.operation === 'get') {
-        const {collection, id, path = []} = parsedMessage;
+        const {collection, id, path = [], operation} = parsedMessage;
         const eventName = `${collection}.${id}`;
         function documentChangeHandler(documentData) {
           let value;
@@ -40,12 +43,66 @@ wsServer.on('connection', socket => {
           socket.send(JSON.stringify({
             fullPath: `${collection}.${id}` + (path.length > 0 ?  `.${path.join('.')}` : ''),
             value,
-            operation: 'documentChange'
+            operation,
+            content: 'value'
           }));
         }
         const document = await db.collection(collection).findOne({_id: documentId(id)});
         documentChangeHandler(document)
         realtimeListeners.on(eventName, documentChangeHandler)
+      } else if (parsedMessage.operation === 'filter') {
+        const {collection, callbackFn, thisArg, operation} = parsedMessage;
+        const eventName = collection;
+        function collectionChangeHandler(changeData) {
+          if(changeData.event === 'drop') {
+            socket.send(JSON.stringify({
+              content: changeData.event,
+              operation,
+              collection, callbackFn, thisArg
+            }));
+          } else {
+            try {
+              const vm = new VM({
+                timeout: 1000,
+                allowAsync: false,
+                sandbox: {array:[changeData.document],...thisArg}
+              });
+              const matches = vm.run(`array.some(${callbackFn})`);
+              if(matches) {
+                socket.send(JSON.stringify({
+                  content: changeData.event,
+                  value: changeData.document,
+                  operation,
+                  collection, callbackFn, thisArg
+                }));
+              }
+            } catch (e) {
+              console.error('Error running vm')
+            }
+          }
+
+        }
+        try {
+          const result = await db.collection(collection).find();
+          const array = await result.toArray();
+
+          const vm = new VM({
+            timeout: 1000,
+            allowAsync: false,
+            sandbox: {array,...thisArg}
+          });
+          const filteredResult = vm.run(`array.filter(${callbackFn})`);
+          socket.send(JSON.stringify({
+            content: 'reset',
+            value: filteredResult,
+            operation,
+            collection, callbackFn, thisArg
+          }))
+          realtimeListeners.on(eventName, collectionChangeHandler)
+        } catch (e) {
+          console.error('Error running vm')
+        }
+
       }
     } catch (e) {
       console.error(e);
