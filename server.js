@@ -16,6 +16,7 @@ import _ from 'lodash-es';
 import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
 import {ObjectID} from "mongodb";
 import {VM} from "vm2";
+import {memoizedRun} from "./vm.js";
 
 const wsServer = new WebSocketServer({ noServer: true });
 const realtimeListeners = new EventEmitter();
@@ -62,12 +63,7 @@ wsServer.on('connection', socket => {
             }));
           } else {
             try {
-              const vm = new VM({
-                timeout: 1000,
-                allowAsync: false,
-                sandbox: {array:[changeData.document],...thisArg}
-              });
-              const matches = vm.run(`array.some(${callbackFn})`);
+              const matches = memoizedRun({array:[changeData.document],...thisArg}, `array.some(${callbackFn})`)
               if(matches) {
                 socket.send(JSON.stringify({
                   content: changeData.event,
