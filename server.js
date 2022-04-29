@@ -176,7 +176,7 @@ const hostingPath = path.resolve(url.fileURLToPath(entryPointUrl), '../.jsdb/hos
 if (fs.existsSync(hostingPath)) {
   app.use(express.static(hostingPath, {
     fallthrough: true,
-    maxAge: 5*60*1000
+    maxAge: '5m'
   }));
   app.use('*', function (req, res) {
     if(!res.finished) res.sendFile(path.resolve(hostingPath, 'index.html'));
