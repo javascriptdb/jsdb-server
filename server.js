@@ -7,23 +7,17 @@ import rateLimit from 'express-rate-limit'
 import passport from "passport";
 import { WebSocketServer } from 'ws';
 import 'dotenv/config'
-import {default as db} from './db.js'; // Start mongo connection
 import authApp from './authApp.js';
 import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
 import EventEmitter from 'events';
 import _ from 'lodash-es';
 import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
-import {ObjectID} from "mongodb";
-import {VM} from "vm2";
 import {memoizedRun} from "./vm.js";
+import {opHandlers} from "./opHandlersSqlite.js";
 
 const wsServer = new WebSocketServer({ noServer: true });
 const realtimeListeners = new EventEmitter();
-
-function documentId(id) {
-  return ObjectID.isValid(id) ? ObjectID(id) : id;
-}
 
 // TODO : move this somewhere proper
 
@@ -48,7 +42,7 @@ wsServer.on('connection', socket => {
             content: 'value'
           }));
         }
-        const document = await db.collection(collection).findOne({_id: documentId(id)});
+        const document = await opHandlers.get({collection, id})
         documentChangeHandler(document)
         realtimeListeners.on(eventName, documentChangeHandler)
       } else if (parsedMessage.operation === 'filter') {
@@ -79,15 +73,7 @@ wsServer.on('connection', socket => {
 
         }
         try {
-          const result = await db.collection(collection).find();
-          const array = await result.toArray();
-
-          const vm = new VM({
-            timeout: 1000,
-            allowAsync: false,
-            sandbox: {array,...thisArg}
-          });
-          const filteredResult = vm.run(`array.filter(${callbackFn})`);
+          const filteredResult = await opHandlers.filter({collection, callbackFn, thisArg});
           socket.send(JSON.stringify({
             content: 'reset',
             value: filteredResult,
@@ -115,12 +101,17 @@ if(runningAsLibrary) {
   const customPath = path.resolve(url.fileURLToPath(entryPointUrl), '../.jsdb');
   await importFromPath(customPath);
 }
-const indexResult = await db.collection('users').createIndex( { "credentials.email": 1 }, { unique: true } )
 
-const currentDbBundle = await db.collection('bundles').findOne({},{sort:{_id:-1}});
-if(currentDbBundle) {
-  await importFromBase64(currentDbBundle.file.string);
+try {
+  const bundles = await opHandlers.getAll({collection: 'bundles'});
+  const currentDbBundle = bundles[0];
+  if(currentDbBundle) {
+    await importFromBase64(currentDbBundle.file.string);
+  }
+} catch (e) {
+  console.error(e);
 }
+
 
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -147,7 +138,6 @@ app.use(express.json({
 }));
 
 app.use((req, res, next) => {
-  req.db = db;
   req.realtimeListeners = realtimeListeners;
   const authorization = req.get('Authorization');
   if (authorization) {
