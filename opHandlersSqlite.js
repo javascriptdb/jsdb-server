@@ -98,7 +98,7 @@ const handlers = {
     },
     async delete({collection, id, path = []}) {
         if(path.length > 0) {
-            const result = await runPromise('run', `UPDATE ${collection} SET value = json_set(value,'$.${path.join('.')}',null) WHERE id = $id`, {
+            const result = await runPromise('run', `UPDATE ${collection} SET value = json_remove(value,'$.${path.join('.')}') WHERE id = $id`, {
                 $id: id,
             })
             return {deletedCount: result.statement.changes};
