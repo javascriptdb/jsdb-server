@@ -1,10 +1,10 @@
 import express from 'express';
-import db from './db.js';
 import jwt from "jsonwebtoken";
 import JwtStrategy from "passport-jwt";
 import passport from "passport";
 import {Strategy as localStrategy} from 'passport-local';
 import bcrypt from "bcryptjs";
+import {opHandlers} from "./opHandlersSqlite.js";
 
 const app = express();
 
@@ -36,7 +36,7 @@ passport.use(
       try {
         password = bcrypt.hashSync(password, 8);
         const user = {credentials: {email, password}};
-        const result = await db.collection('users').insertOne(user);
+        const result = await opHandlers.set({collection:'users', value: user})
         return done(null, {email, _id: result.insertedId});
       } catch (error) {
         done(error);
@@ -54,7 +54,8 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        const user = await db.collection('users').findOne({'credentials.email': email});
+        const callbackFn = ((user) => user.credentials.email === email).toString()
+        const user = await opHandlers.find({collection: 'users',callbackFn,thisArg:{email}})
 
         if(!bcrypt.compareSync(password, user.credentials.password)){
           return done(null, false, {message: 'Invalid password'})
