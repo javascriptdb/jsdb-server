@@ -1,5 +1,5 @@
 import express from 'express';
-import {rules, triggers} from "./lifecycleMiddleware.js";
+import {resolveMiddlewareFunction, rules, triggers} from "./lifecycleMiddleware.js";
 import operationFallback from "./operationFallback.js";
 import {opHandlers} from "./opHandlersSqlite.js";
 
@@ -8,17 +8,13 @@ const app = express();
 app.use(async (req, res, next) => {
     const {collection} = req.body;
     const method = req.path.replaceAll('/', '');
-    const ruleFunction = rules[collection]?.[method]
-        || rules[collection]?.[operationFallback[method]]
-        || rules[collection]?.default
-        || rules.default?.[method]
-        || rules.default?.[operationFallback[method]]
-        || rules.default?.default;
+
+    const ruleFunction = resolveMiddlewareFunction('rules', collection, method);
 
     if (!ruleFunction) {
         console.warn(`No rule defined for ${collection} method ${method}`);
     } else {
-        console.log('Running function:', ruleFunction.toString());
+        console.log(`${method} rule:`, ruleFunction.toString());
         try {
             const ruleResult = await ruleFunction({collection, user: req.user, req, ...req.body});
             if (ruleResult) {
@@ -185,12 +181,7 @@ app.use(async (req, res, next) => {
     next();
     const {collection, id, value} = req.body;
     const method = req.path.replaceAll('/', '');
-    const triggerFunction = triggers[collection]?.[method]
-        || triggers[collection]?.[operationFallback[method]]
-        || triggers[collection]?.default
-        || triggers.default?.[method]
-        || triggers.default?.[operationFallback[method]]
-        || triggers.default?.default;
+    const triggerFunction = resolveMiddlewareFunction('triggers', collection, method)
     try {
         triggerFunction?.({collection, id, value, user: req.user, insertedId: req.insertedId, req, res});
     } catch (e) {

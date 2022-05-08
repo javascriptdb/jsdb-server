@@ -10,3 +10,5 @@
 /.jsdb-temp/
 /.service-accounts/
 /api.test.js
+/sdk/node_modules/
+/service-accounts/

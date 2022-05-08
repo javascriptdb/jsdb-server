@@ -76,7 +76,23 @@ function parseFn(fn, thisArg) {
     return string.replaceAll(`"`,`'`)
 }
 
-console.log(parseFn(`message=>message.text === self.text`, {self:{text: 'FUN!'}}));
-console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.text === self.text`, {self:{text:'FUN!'}}));
-console.log(parseFn(`msg=>(msg.text === 'FUN!' && msg.date > new Date()) || msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
-console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.date > new Date() && msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
+// console.log(parseFn(`message=>message.text === self.text`, {self:{text: 'FUN!'}}));
+// console.log(parseFn(`message=>message.text === self.text`, {self:{text: 'FUN!'}}));
+// console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.text === self.text`, {self:{text:'FUN!'}}));
+// console.log(parseFn(`msg=>(msg.text === 'FUN!' && msg.date > new Date()) || msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
+// console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.date > new Date() && msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
+
+
+
+const tree = (acorn.parse(`server: () => {
+    
+}`))
+
+walk(tree, {
+    enter(node) {
+        console.log(node)
+    },
+    leave () {
+
+    }
+})
