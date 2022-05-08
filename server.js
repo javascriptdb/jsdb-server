@@ -12,9 +12,17 @@ import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
 import EventEmitter from 'events';
 import _ from 'lodash-es';
-import {functions, importFromBase64, importFromPath, rules, triggers} from "./lifecycleMiddleware.js";
+import {
+  functions,
+  importFromBase64,
+  importFromPath,
+  resolveMiddlewareFunction,
+  rules,
+  triggers
+} from "./lifecycleMiddleware.js";
 import {memoizedRun} from "./vm.js";
 import {opHandlers} from "./opHandlersSqlite.js";
+import jwt from "jsonwebtoken";
 
 const wsServer = new WebSocketServer({ noServer: true });
 const realtimeListeners = new EventEmitter();
@@ -25,6 +33,34 @@ wsServer.on('connection', socket => {
   socket.on('message', async message => {
     try {
       const parsedMessage = JSON.parse(message);
+      try {
+        let token;
+        if(parsedMessage.authorization) {
+          token = jwt.verify(parsedMessage.authorization.replaceAll('Bearer ',''), process.env.JWT_SECRET);
+        }
+        const ruleFunction = await resolveMiddlewareFunction('rules', parsedMessage.collection, parsedMessage.operation);
+        console.log(`Realtime ${parsedMessage.operation} rule:`, ruleFunction.toString())
+        const ruleResult = await ruleFunction({...parsedMessage, user: token?.user})
+        if (ruleResult) {
+          // TODO : How do we pass this along for the full duration of the subscription
+          // req.excludeFields = ruleResult?.excludeFields;
+          // req.where = ruleResult?.where;
+        } else {
+          return socket.send(JSON.stringify({
+            operation: 'error',
+            context: message,
+            message: 'Unauthorized!'
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+        return socket.send(JSON.stringify({
+          operation: 'error',
+          context: message,
+          message: e.message
+        }));
+      }
+
       if(parsedMessage.operation === 'get') {
         const {collection, id, path = [], operation} = parsedMessage;
         const eventName = `${collection}.${id}`;

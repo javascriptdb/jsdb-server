@@ -1,10 +1,8 @@
 import sqlite3 from "sqlite3";
 import {memoizedRun} from "./vm.js";
 import _ from "lodash-es"
-import * as acorn from "acorn";
-import {walk} from "estree-walker";
 
-const db = new sqlite3.Database('./database.sqlite');
+const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 
 export const uuid = () => {
     const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'

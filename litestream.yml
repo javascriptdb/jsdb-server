@@ -1,0 +1,4 @@
+dbs:
+  - path: database.sqlite
+    replicas:
+      - url: $REPLICATION_PATH
