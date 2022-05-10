@@ -1,27 +1,28 @@
-import {start} from "./server.js";
-import {setServerUrl, DatabaseArray, DatabaseMap, auth} from "./sdk/dist/sdk.esm.js";
-import * as assert from "assert";
+import {setServerUrl, DatabaseArray} from "./sdk/dist/sdk.esm.js";
+
 const msgsArray = new DatabaseArray('msgs');
-const msgsMap = new DatabaseMap('msgs');
-start();
-setServerUrl('http://localhost:3001');
 
-const passedMap = new Map();
-const failedMap = new Map();
+setServerUrl('http://localhost:3001/');
 
-async function test(name, callback) {
+console.log(await msgsArray.length);
+
+let count = 0;
+const interval = setInterval(async ()=> {
     try {
-        await callback();
-        passedMap.set(name, true)
+        msgsArray.push({
+            message: 'FFFFFFF',
+            date: new Date()
+        }).then(() => count++)
     } catch (e) {
-        console.trace(name,e.message)
-        failedMap.set(name, e);
+        console.error(e);
     }
-}
+}, 0);
 
-setInterval(()=> {
-    msgsArray.push({
-        message: 'FFFFFFF',
-        date: new Date()
-    })
-}, 3000);
+setTimeout(() => {
+    console.log('1s',count);
+    clearInterval(interval)
+},1000);
+
+setTimeout(() => {
+    console.log('2s',count);
+},2000);
