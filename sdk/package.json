@@ -1,5 +1,5 @@
 {
-  "version": "0.0.25",
+  "version": "0.0.27",
   "license": "MIT",
   "main": "dist/index.js",
   "browser": "dist/sdk.esm.js",

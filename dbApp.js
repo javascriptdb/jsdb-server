@@ -1,6 +1,5 @@
 import express from 'express';
 import {resolveMiddlewareFunction, rules, triggers} from "./lifecycleMiddleware.js";
-import operationFallback from "./operationFallback.js";
 import {opHandlers} from "./opHandlersSqlite.js";
 
 const app = express();

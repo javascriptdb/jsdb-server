@@ -1,6 +1,6 @@
 {
   "name": "@jsdb/server",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "",
   "main": "server.js",
   "type": "module",
@@ -21,7 +21,6 @@
     "express-rate-limit": "^6.3.0",
     "jsonwebtoken": "^8.5.1",
     "lodash-es": "^4.17.21",
-    "node-fetch": "^3.2.3",
     "passport": "^0.5.2",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
