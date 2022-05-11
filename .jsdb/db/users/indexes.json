@@ -1,0 +1,6 @@
+[
+  {
+    "unique": true,
+    "fields" : ["credentials.email"]
+  }
+]

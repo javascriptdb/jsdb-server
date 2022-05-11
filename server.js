@@ -15,7 +15,7 @@ import _ from 'lodash-es';
 import {
   functions,
   importFromBase64,
-  importFromPath,
+  importFromPath, indexes,
   resolveMiddlewareFunction,
   rules,
   triggers
@@ -188,7 +188,7 @@ app.use('/auth', authApp);
 app.use('/db', dbApp);
 app.use('/functions', functionsApp);
 app.use('/__discovery', (req,res) => {
-  const response = JSON.parse(JSON.stringify({rules, triggers, functions},(key, value) => {
+  const response = JSON.parse(JSON.stringify({rules, triggers, functions, indexes},(key, value) => {
     if(typeof value === 'function') {
       return 'fn'
     }

@@ -1,6 +1,3 @@
-Install mongodb
-https://www.mongodb.com/docs/manual/installation/
-
 Install jsdb server
 ```shell
 npm i @jsdb/server
@@ -16,12 +13,6 @@ Create .env file
 ```dotenv
 # Used to sign jwt tokens
 JWT_SECRET="SUPER_SECRET_KEY"
-
-# Mongodb connection string
-MONGODB_URI="..."
-
-# Mongodb database
-MONGODB_DATABASE="jsdb"
 
 # Nodejs server port
 PORT=3001

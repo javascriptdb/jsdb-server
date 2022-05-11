@@ -7,6 +7,7 @@ import operationFallback from "./operationFallback.js";
 export const triggers = {};
 export const rules = {};
 export const functions = {};
+export const indexes = {};
 
 export function resolveMiddlewareFunction(middlewareType, collection, method) {
   let object = middlewareType === 'rules' ? rules : triggers;
@@ -33,6 +34,11 @@ export async function importFromPath(extractedBundlePath) {
         } catch (e) {
             if (e.code !== 'ERR_MODULE_NOT_FOUND') console.error(e)
         }
+        try {
+            indexes[collectionDir] = (await import(path.resolve(extractedBundlePath, 'db', collectionDir, 'indexes.json'),{assert: {type: 'json'}})).default
+        } catch (e) {
+            if (e.code !== 'ERR_MODULE_NOT_FOUND') console.error(e)
+        }
     }));
 
     try {
@@ -52,7 +58,7 @@ export async function importFromPath(extractedBundlePath) {
 
     const bundleHostingPath = path.resolve(extractedBundlePath, 'hosting')
     const serverHostingPath = path.resolve(process.cwd(), '.jsdb', 'hosting')
-    console.log({rules, triggers, functions});
+    console.log({rules, triggers, functions, indexes});
     try {
         if (bundleHostingPath !== serverHostingPath) {
             console.log('Copy hosting from', bundleHostingPath, serverHostingPath);

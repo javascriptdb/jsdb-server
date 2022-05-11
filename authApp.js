@@ -37,7 +37,7 @@ passport.use(
         password = bcrypt.hashSync(password, 8);
         const user = {credentials: {email, password}};
         const result = await opHandlers.set({collection:'users', value: user})
-        return done(null, {email, _id: result.insertedId});
+        return done(null, {email, id: result.insertedId});
       } catch (error) {
         done(error);
       }
@@ -78,8 +78,8 @@ app.post(
   passport.authenticate('signup', {session: false}),
   async (req, res) => {
     try {
-      const token = jwt.sign({ user: { _id: req.user._id, email: req.user.email } }, process.env.JWT_SECRET);
-      res.send({ token, userId: req.user._id });
+      const token = jwt.sign({ user: { id: req.user.id, email: req.user.email } }, process.env.JWT_SECRET);
+      res.send({ token, userId: req.user.id });
     } catch (e) {
       console.error(e);
       res.status(500).send(e);
@@ -105,10 +105,9 @@ app.post(
             async (error) => {
               if (error) return next(error);
 
-              const body = { _id: user._id, email: user.email };
-              const token = jwt.sign({ user: body }, process.env.JWT_SECRET);
+              const token = jwt.sign({ user: { id: user.id, email: user.email } }, process.env.JWT_SECRET);
 
-              return res.json({ token, userId: user._id });
+              return res.json({ token, userId: user.id });
             }
           );
         } catch (error) {

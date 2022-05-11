@@ -5,11 +5,11 @@ import _ from "lodash-es"
 const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 
 export const uuid = () => {
-    const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
 
     let autoId = ''
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 24; i++) {
         autoId += CHARS.charAt(
             Math.floor(Math.random() * CHARS.length)
         )
@@ -38,10 +38,28 @@ try {
     console.trace(e);
 }
 
-async function ensureTable(collection) {
+export async function ensureTable(collection) {
     if (tablesCreated.has(collection)) return;
     await runPromise('run', `CREATE TABLE IF NOT EXISTS ${collection} (id TEXT PRIMARY KEY, value JSONB)`)
     tablesCreated.set(collection, true);
+}
+export async function ensureIndex(collection, index) {
+    try {
+        const indexName = index.fields.join('_').replace(/\s+/g, ' ').trim()
+        const columns = index.fields.map(field => {
+            const parts = field.replace(/\s+/g, ' ').trim().split(' ')
+            if(parts.length > 2) {
+                throw new Error('Invalid field, must have form: path.to.property DESC');
+            } else if(!['ASC','DESC'].includes(parts[1])) {
+                throw new Error('Invalid field, order should be ASC or DESC');
+            }
+            return `JSON_EXTRACT(value, '$.${parts[0]}') ${parts[1] || 'ASC'}`
+        }).join(',')
+        console.log(`CREATE UNIQUE INDEX IF NOT EXISTS '${indexName}' ON ${collection} (${columns})`)
+        // await runPromise('run',`CREATE UNIQUE INDEX IF NOT EXISTS '${indexName}' ON ${collection} (${columns})`)
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 function rowDataToObject(data) {
