@@ -95,6 +95,7 @@ app.post(
       async (err, user, info) => {
         try {
           if (err || !user) {
+              console.error(err)
             const error = new Error('An error occurred.');
             return next(error);
           }

@@ -3,14 +3,12 @@ import {walk} from "estree-walker";
 import _ from "lodash-es";
 import * as assert from "assert";
 
-function parseFn(fn, thisArg) {
+export function functionToWhere(fn, thisArg) {
     const ast = acorn.parse(fn);
-
     const arrowFunction = ast.body[0].expression;
-
-    assert.equal(arrowFunction.type,'ArrowFunctionExpression')
-    assert.equal(arrowFunction.params.length,1)
-    assert.match(arrowFunction.body.type,/BinaryExpression|LogicalExpression/)
+    assert.equal(arrowFunction.type,'ArrowFunctionExpression','Filter or find callbacks should be arrow functions.')
+    assert.equal(arrowFunction.params.length,1, 'Filter or find callbacks only receive one argument.')
+    assert.match(arrowFunction.body.type,/BinaryExpression|LogicalExpression/, 'Callback body should be a one-liner Binary or Logical expression. Blocks are not allowed.')
     const param =  arrowFunction.params[0].name;
     let string = ''
     let operatorMaps = {
@@ -49,13 +47,14 @@ function parseFn(fn, thisArg) {
                 }
                 this.skip()
             }
-            if(node.type === 'NewExpression') {
-                string += JSON.stringify(eval(fn.substring(node.start, node.end)))
-                if(prop === 'left') {
-                    string += getOperator(parent.operator)
-                }
-                this.skip()
-            }
+            // Implement in a safe way
+            // if(node.type === 'NewExpression') {
+            //     string += JSON.stringify(eval(fn.substring(node.start, node.end)))
+            //     if(prop === 'left') {
+            //         string += getOperator(parent.operator)
+            //     }
+            //     this.skip()
+            // }
         },
         leave(node, parent, prop, index) {
             if(node.type === 'LogicalExpression') {
@@ -76,23 +75,4 @@ function parseFn(fn, thisArg) {
     return string.replaceAll(`"`,`'`)
 }
 
-// console.log(parseFn(`message=>message.text === self.text`, {self:{text: 'FUN!'}}));
-// console.log(parseFn(`message=>message.text === self.text`, {self:{text: 'FUN!'}}));
-// console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.text === self.text`, {self:{text:'FUN!'}}));
-// console.log(parseFn(`msg=>(msg.text === 'FUN!' && msg.date > new Date()) || msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
-// console.log(parseFn(`msg=>msg.text === 'FUN!' && msg.date > new Date() && msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
-
-
-
-const tree = (acorn.parse(`server: () => {
-    
-}`))
-
-walk(tree, {
-    enter(node) {
-        console.log(node)
-    },
-    leave () {
-
-    }
-})
+console.log(functionToWhere(`msg=>msg.text === 'FUN!' && msg.date > new Date() && msg.text === ctx.text`, {ctx:{text:'FUN!'}}));

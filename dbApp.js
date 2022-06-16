@@ -13,7 +13,7 @@ app.use(async (req, res, next) => {
     if (!ruleFunction) {
         console.warn(`No rule defined for ${collection} method ${method}`);
     } else {
-        console.log(`${method} rule:`, ruleFunction.toString());
+        // console.log(`${method} rule:`, ruleFunction.toString());
         try {
             const ruleResult = await ruleFunction({collection, user: req.user, req, ...req.body});
             if (ruleResult) {

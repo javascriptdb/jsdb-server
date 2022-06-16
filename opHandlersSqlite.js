@@ -2,7 +2,7 @@ import sqlite3 from "sqlite3";
 import {memoizedRun} from "./vm.js";
 import _ from "lodash-es"
 
-const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
+export const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 
 export const uuid = () => {
     const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -31,32 +31,25 @@ async function runPromise(cmd, ...args) {
     })
 }
 
-try {
-    await ensureTable('users');
-    await runPromise('run',`CREATE UNIQUE INDEX IF NOT EXISTS unique_email ON users (JSON_EXTRACT(value, '$.credentials.email'))`)
-} catch (e) {
-    console.trace(e);
-}
-
-export async function ensureTable(collection) {
+export async function forceTable(collection) {
     if (tablesCreated.has(collection)) return;
     await runPromise('run', `CREATE TABLE IF NOT EXISTS ${collection} (id TEXT PRIMARY KEY, value JSONB)`)
     tablesCreated.set(collection, true);
 }
-export async function ensureIndex(collection, index) {
+export async function forceIndex(collection, index) {
+    await forceTable(collection)
     try {
         const indexName = index.fields.join('_').replace(/\s+/g, ' ').trim()
         const columns = index.fields.map(field => {
             const parts = field.replace(/\s+/g, ' ').trim().split(' ')
             if(parts.length > 2) {
                 throw new Error('Invalid field, must have form: path.to.property DESC');
-            } else if(!['ASC','DESC'].includes(parts[1])) {
+            } else if(parts[1]!==undefined && !['ASC','DESC'].includes(parts[1])) {
                 throw new Error('Invalid field, order should be ASC or DESC');
             }
             return `JSON_EXTRACT(value, '$.${parts[0]}') ${parts[1] || 'ASC'}`
         }).join(',')
-        console.log(`CREATE UNIQUE INDEX IF NOT EXISTS '${indexName}' ON ${collection} (${columns})`)
-        // await runPromise('run',`CREATE UNIQUE INDEX IF NOT EXISTS '${indexName}' ON ${collection} (${columns})`)
+        await runPromise('run',`CREATE UNIQUE INDEX IF NOT EXISTS '${indexName}' ON ${collection} (${columns})`)
     } catch (e) {
         console.error(e)
     }
@@ -163,7 +156,7 @@ const handlers = {
 export const opHandlers = new Proxy(handlers, {
     get(target, prop, receiver) {
         return async ({collection, ...params}) => {
-            await ensureTable(collection);
+            await forceTable(collection);
             return Reflect.get(target, prop, receiver)({collection, ...params});
         }
     },

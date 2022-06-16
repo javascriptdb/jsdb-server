@@ -3,6 +3,7 @@ import url from "url";
 import fsPromises from "fs/promises";
 import AdmZip from "adm-zip";
 import operationFallback from "./operationFallback.js";
+import {forceIndex} from "./opHandlersSqlite.js";
 
 export const triggers = {};
 export const rules = {};
@@ -36,6 +37,7 @@ export async function importFromPath(extractedBundlePath) {
         }
         try {
             indexes[collectionDir] = (await import(path.resolve(extractedBundlePath, 'db', collectionDir, 'indexes.json'),{assert: {type: 'json'}})).default
+            indexes[collectionDir].forEach(index => forceIndex(collectionDir,index))
         } catch (e) {
             if (e.code !== 'ERR_MODULE_NOT_FOUND') console.error(e)
         }
