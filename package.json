@@ -1,11 +1,12 @@
 {
   "name": "@jsdb/server",
   "version": "0.0.16",
-  "description": "",
+  "description": "Install jsdb server ```shell npm i @jsdb/server ```",
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "node api.test.js"
+    "test": "node api.test.js",
+    "start": "node server.js"
   },
   "author": "jpcapdevila",
   "license": "SSPL",

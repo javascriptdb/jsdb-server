@@ -4,6 +4,7 @@ import _ from "lodash-es"
 import {functionToWhere} from "./parser.js";
 
 export const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
+db.run( 'PRAGMA journal_mode = WAL;' );
 
 export const uuid = () => {
     const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -156,12 +157,7 @@ export const opHandlers = {
         tablesCreated.delete(collection);
         return true;
     },
-    async filter({collection, callbackFn, thisArg}) {
-        await forceTable(collection);
-        const result = await this.getAll({collection});
-        return memoizedRun({array: result, ...thisArg}, `array.filter(${callbackFn})`)
-    },
-    async filter2({collection, operations}) {
+    async filter({collection, operations}) {
         await forceTable(collection);
         const lengthOp = operations.find(op => op.type === 'length');
         let query = `SELECT ${lengthOp?'COUNT(*) as count':'*'} FROM ${collection}`
@@ -180,7 +176,6 @@ export const opHandlers = {
             queryParams.$limit = sliceOp?.data.end - sliceOp?.data.start;
         }
 
-
         if(lengthOp) {
             // Return without running map operation, doesn't make sense to waste time mapping and then counting.
             const result = await runPromise('get', query, queryParams)
@@ -188,10 +183,11 @@ export const opHandlers = {
         } else {
             const result = await runPromise('all', query, queryParams)
             const mapOp = operations.find(op => op.type === 'map');
+            const objects = rowsToObjects(result.data || []);
             if(mapOp) {
-                return memoizedRun({array: result.data, ...mapOp.data.thisArg}, `array.map(${mapOp.data.callbackFn})`)
+                return memoizedRun({array: objects, ...mapOp.data.thisArg}, `array.map(${mapOp.data.callbackFn})`)
             } else {
-                return rowsToObjects(result.data || []);
+                return objects;
             }
         }
     },

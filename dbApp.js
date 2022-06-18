@@ -32,19 +32,7 @@ app.use(async (req, res, next) => {
 
 app.post('/filter', async (req, res, next) => {
     try {
-        const records = await opHandlers.filter(req.body);
-        res.send(records || []);
-        next();
-    } catch (e) {
-        console.error(e);
-        res.status(500).send(e);
-    }
-});
-
-
-app.post('/filter2', async (req, res, next) => {
-    try {
-        const result = await opHandlers.filter2(req.body);
+        const result = await opHandlers.filter(req.body);
         res.send({value: result});
         next();
     } catch (e) {
