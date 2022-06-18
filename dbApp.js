@@ -41,6 +41,18 @@ app.post('/filter', async (req, res, next) => {
     }
 });
 
+
+app.post('/filter2', async (req, res, next) => {
+    try {
+        const result = await opHandlers.filter2(req.body);
+        res.send({value: result});
+        next();
+    } catch (e) {
+        console.error(e);
+        res.status(500).send(e);
+    }
+});
+
 app.post('/find', async (req, res, next) => {
     try {
         const result = await opHandlers.find(req.body);
@@ -66,6 +78,17 @@ app.post('/map', async (req, res, next) => {
 app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) => {
     try {
         const array = await opHandlers.getAll(req.body);
+        res.send(array || []);
+        next();
+    } catch (e) {
+        console.error(e);
+        res.status(500).send(e);
+    }
+});
+
+app.post(['/slice'], async (req, res, next) => {
+    try {
+        const array = await opHandlers.slice(req.body);
         res.send(array || []);
         next();
     } catch (e) {
@@ -102,7 +125,7 @@ app.post('/push', async (req, res, next) => {
         const count = await opHandlers.size(req.body);
         req.insertedId = result.insertedId;
         res.send({value: count});
-        const documentData = await opHandlers.get({id: result.insertedId});
+        const documentData = await opHandlers.get({collection:req.body.collection,id: result.insertedId});
         req.realtimeListeners.emit(req.body.collection, {event: 'add', document: documentData})
         next();
     } catch (e) {
@@ -164,6 +187,7 @@ app.post('/set', async (req, res, next) => {
         res.status(500).send(e);
     }
 });
+
 app.post('/get', async (req, res, next) => {
     try {
         const {collection, id, path} = req.body;

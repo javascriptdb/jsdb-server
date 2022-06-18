@@ -74,5 +74,3 @@ export function functionToWhere(fn, thisArg) {
     });
     return string.replaceAll(`"`,`'`)
 }
-
-console.log(functionToWhere(`msg=>msg.text === 'FUN!' && msg.date > new Date() && msg.text === ctx.text`, {ctx:{text:'FUN!'}}));
