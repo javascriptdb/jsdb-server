@@ -21,17 +21,36 @@ async function test(name, callback) {
     }
 }
 
-try {
-    await auth.createAccount({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
-} catch (e) {
-
-}
-await auth.signIn({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
+// try {
+//     await auth.createAccount({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
+// } catch (e) {
+//
+// }
+// await auth.signIn({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
 
 
 await test('Initial clear map using .clear()', async() => {
     await msgsMap.clear();
 })
+// //
+// await test('set message', async() => {
+//     await msgsMap.set('x',{text: 'xyz'});
+// })
+//
+// await test('get keys using .keys()', async() => {
+//     const keys = await msgsMap.keys();
+//     assert.deepStrictEqual(keys, ['x'])
+// })
+//
+// await test('get values using .values()', async() => {
+//     const values = await msgsMap.values();
+//     assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
+// })
+//
+// await test('get message using .get()', async() => {
+//     const msg = await msgsMap.get('x');
+//     assert.equal(msg.text, 'xyz')
+// })
 //
 await test('set message', async() => {
     await msgsMap.set('x',{text: 'xyz'});
