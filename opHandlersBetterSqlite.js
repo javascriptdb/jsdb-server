@@ -2,7 +2,7 @@ import {memoizedRun} from "./vm.js";
 import _ from "lodash-es"
 import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
-const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite', { verbose: console.log });
+const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 db.pragma( 'journal_mode = WAL;' );
 
 export const uuid = () => {
@@ -20,7 +20,7 @@ export const uuid = () => {
 
 const tablesCreated = new Map();
 
-function dbCommand(cmd, sql, parameters) {
+function dbCommand(cmd, sql, parameters = {}) {
     try {
         const statement = db.prepare(sql);
         const data = statement[cmd](parameters)
@@ -72,8 +72,8 @@ export const opHandlers = {
     async slice({collection, start, end}) {
         await forceTable(collection);
         const result = dbCommand('all', `SELECT * FROM ${collection} LIMIT $limit OFFSET $offset`, {
-            $offset: start,
-            $limit: end - start
+            offset: start,
+            limit: end - start
         })
         return rowsToObjects(result.data || []);
     },
@@ -81,12 +81,12 @@ export const opHandlers = {
         await forceTable(collection);
         if (path.length > 0) {
             const result = dbCommand('get', `SELECT id, json_extract(value, '$.${safe(path.join('.'))}') as value FROM ${collection} WHERE id = $id`, {
-                $id: id,
+                id,
             })
             return result.data.value;
         } else {
             const result = dbCommand('get', `SELECT id,value FROM ${collection} WHERE id = $id`, {
-                $id: id,
+                id,
             })
             return result.data && rowDataToObject(result.data);
         }
@@ -99,14 +99,14 @@ export const opHandlers = {
             // Make new object from path
             const object = _.set({}, path, value);
             result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = json_set(value,'$.${safe(path.join('.'))}',json($nestedValue)) RETURNING *`, {
-                $id: id,
-                $value: JSON.stringify(object),
-                $nestedValue: JSON.stringify(value)
+                id,
+                value: JSON.stringify(object),
+                nestedValue: JSON.stringify(value)
             })
         } else {
             result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = $value RETURNING *`, {
-                $id: id,
-                $value: JSON.stringify(value)
+                id,
+                value: JSON.stringify(value)
             })
         }
         const inserted = result.statement.changes === 0;
@@ -121,20 +121,20 @@ export const opHandlers = {
         await forceTable(collection);
         if (path.length > 0) {
             const result = dbCommand('run', `UPDATE ${collection} SET value = json_remove(value,'$.${safe(path.join('.'))}') WHERE id = $id`, {
-                $id: id,
+                id,
             })
             return {deletedCount: result.statement.changes};
         } else {
             const result = dbCommand('run', `DELETE FROM ${collection} WHERE id = $id`, {
-                $id: id
+                id
             })
-            return {deletedCount: result.statement.changes};
+            return {deletedCount: result.data.changes};
         }
     },
     async has({collection, id}) {
         await forceTable(collection);
         const result = dbCommand('get', `SELECT EXISTS(SELECT id FROM ${collection} WHERE id = $id) as found`, {
-            $id: id
+            id
         })
         return result?.data.found > 0;
     },
@@ -169,8 +169,8 @@ export const opHandlers = {
         const sliceOp = operations.find(op => op.type === 'slice');
         if(sliceOp) {
             query += ` LIMIT $limit OFFSET $offset `;
-            queryParams.$offset = sliceOp?.data.start;
-            queryParams.$limit = sliceOp?.data.end - sliceOp?.data.start;
+            queryParams.offset = sliceOp?.data.start;
+            queryParams.limit = sliceOp?.data.end - sliceOp?.data.start;
         }
 
         if(lengthOp) {

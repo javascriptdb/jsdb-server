@@ -21,7 +21,7 @@ import {
   triggers
 } from "./lifecycleMiddleware.js";
 import {memoizedRun} from "./vm.js";
-import {opHandlers} from "./opHandlersSqlite.js";
+import {opHandlers} from "./opHandlersBetterSqlite.js";
 import jwt from "jsonwebtoken";
 
 const wsServer = new WebSocketServer({ noServer: true });

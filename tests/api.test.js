@@ -21,37 +21,40 @@ async function test(name, callback) {
     }
 }
 
-// try {
-//     await auth.createAccount({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
-// } catch (e) {
-//
-// }
-// await auth.signIn({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
+try {
+    await auth.createAccount({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
+    await auth.signIn({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
+} catch (e) {
+
+}
 
 
 await test('Initial clear map using .clear()', async() => {
     await msgsMap.clear();
 })
-// //
-// await test('set message', async() => {
-//     await msgsMap.set('x',{text: 'xyz'});
-// })
 //
-// await test('get keys using .keys()', async() => {
-//     const keys = await msgsMap.keys();
-//     assert.deepStrictEqual(keys, ['x'])
-// })
-//
-// await test('get values using .values()', async() => {
-//     const values = await msgsMap.values();
-//     assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
-// })
-//
-// await test('get message using .get()', async() => {
-//     const msg = await msgsMap.get('x');
-//     assert.equal(msg.text, 'xyz')
-// })
-//
+await test('set message', async() => {
+    await msgsMap.set('x',{text: 'xyz'});
+})
+
+await test('get keys using .keys()', async() => {
+    const keys = await msgsMap.keys();
+    assert.deepStrictEqual(keys, ['x'])
+})
+
+await test('get values using .values()', async() => {
+    const values = await msgsMap.values();
+    assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
+})
+
+await test('get message using .get()', async() => {
+    const startMs = Date.now();
+    const msg = await msgsMap.get('x');
+    const endMs = Date.now();
+    console.log('Get by id time', endMs - startMs)
+    assert.equal(msg.text, 'xyz')
+})
+
 await test('set message', async() => {
     await msgsMap.set('x',{text: 'xyz'});
 })
@@ -109,8 +112,8 @@ await test('delete message property', async() => {
 await test('delete message using .delete()', async() => {
     const wasDeleted = await msgsMap.delete('x');
     const msg = await msgsMap.x;
-    assert.equal(msg, undefined)
-    assert.equal(wasDeleted, true)
+    assert.equal(msg, undefined);
+    assert.equal(wasDeleted, true);
 })
 
 await test('add message using .push()', async() => {
@@ -217,13 +220,20 @@ await test('Get 1000', async() => {
 
 await test('Query 1000 logs', async() => {
     const allLogs = await logsMap.keys()
-    console.log(allLogs.length)
     const startMs = Date.now();
     for(const id of allLogs) {
         await logsMap.get(id);
     }
     const endMs = Date.now();
     console.log('Query Read Time', endMs-startMs)
+    // assert.deepStrictEqual(endMs-startMs<2000, true);
+})
+
+await test('Find first log', async() => {
+    const startMs = Date.now();
+    await logsArray.filter(log => log.i === 999)
+    const endMs = Date.now();
+    console.log('Find first time', endMs-startMs)
     // assert.deepStrictEqual(endMs-startMs<2000, true);
 })
 
