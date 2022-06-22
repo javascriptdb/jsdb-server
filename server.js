@@ -12,6 +12,7 @@ import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
 import EventEmitter from 'events';
 import _ from 'lodash-es';
+import {setServerUrl} from "@jsdb/sdk";
 import {
   functions,
   importFromBase64,
@@ -223,6 +224,7 @@ export function start() {
       wsServer.emit('connection', socket, request);
     });
   });
+  setServerUrl(process.env.SERVER_URL)
 }
 
 if (!runningAsLibrary) {
