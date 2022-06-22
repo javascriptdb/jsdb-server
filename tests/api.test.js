@@ -28,7 +28,6 @@ try {
 
 }
 
-
 await test('Initial clear map using .clear()', async() => {
     await msgsMap.clear();
 })
@@ -235,6 +234,23 @@ await test('Find first log', async() => {
     const endMs = Date.now();
     console.log('Find first time', endMs-startMs)
     // assert.deepStrictEqual(endMs-startMs<2000, true);
+})
+
+await test('clear logs', async() => {
+    await logsMap.clear();
+    const size = await logsMap.size;
+    assert.deepStrictEqual(size, 0)
+})
+
+await test('Subscribe filter', async () => {
+    let lastValue;
+    const unsubscribe = logsArray.filter(log => log.text === 'LIVE LOG!').subscribe(value => {
+        lastValue = value
+    });
+    await logsArray.push({type:'info',text:'LIVE LOG!',date: new Date()});
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    unsubscribe();
+    assert.equal(lastValue[0]?.text,'LIVE LOG!');
 })
 
 await test('clear logs', async() => {

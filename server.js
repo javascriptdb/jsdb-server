@@ -82,43 +82,42 @@ wsServer.on('connection', socket => {
         documentChangeHandler(document)
         realtimeListeners.on(eventName, documentChangeHandler)
       } else if (parsedMessage.operation === 'filter') {
-        const {collection, callbackFn, thisArg, operation} = parsedMessage;
-        const eventName = collection;
+        const {collection, operations, operation, eventName} = parsedMessage;
+        const serverEventName = collection;
         function collectionChangeHandler(changeData) {
           if(changeData.event === 'drop') {
             socket.send(JSON.stringify({
               content: changeData.event,
               operation,
-              collection, callbackFn, thisArg
+              eventName
             }));
           } else {
             try {
-              const matches = memoizedRun({array:[changeData.document],...thisArg}, `array.some(${callbackFn})`)
-              if(matches) {
-                socket.send(JSON.stringify({
-                  content: changeData.event,
-                  value: changeData.document,
-                  operation,
-                  collection, callbackFn, thisArg
-                }));
-              }
+              const filteredResult = opHandlers.filter({collection, operations});
+              socket.send(JSON.stringify({
+                content: 'reset',
+                value: filteredResult,
+                eventName,
+                operation,
+                collection
+              }))
             } catch (e) {
-              console.error('Error running vm')
+              console.error('Error running filter')
             }
           }
-
         }
         try {
-          const filteredResult = await opHandlers.filter({collection, callbackFn, thisArg});
+          const filteredResult = await opHandlers.filter({collection, operations});
           socket.send(JSON.stringify({
             content: 'reset',
             value: filteredResult,
+            eventName,
             operation,
-            collection, callbackFn, thisArg
+            collection
           }))
-          realtimeListeners.on(eventName, collectionChangeHandler)
+          realtimeListeners.on(serverEventName, collectionChangeHandler)
         } catch (e) {
-          console.error('Error running vm')
+          console.error('Error running filter')
         }
 
       }

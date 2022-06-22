@@ -1,6 +1,6 @@
 {
   "name": "@jsdb/server",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "Install jsdb server ```shell npm i @jsdb/server ```",
   "main": "server.js",
   "type": "module",
