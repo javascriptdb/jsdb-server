@@ -1,10 +1,12 @@
 import express from 'express';
-import jwt from "jsonwebtoken";
-import JwtStrategy from "passport-jwt";
-import passport from "passport";
+import jwt from 'jsonwebtoken';
+import JwtStrategy from 'passport-jwt';
+import passport from 'passport';
 import {Strategy as localStrategy} from 'passport-local';
 import bcrypt from "bcryptjs";
 import {opHandlers} from "./opHandlersBetterSqlite.js";
+import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
+import {DatabaseArray} from '@jsdb/sdk';
 
 const app = express();
 
@@ -23,7 +25,53 @@ passport.use(
     }
   )
 );
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  console.log((new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString())
+  passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: (new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString(),
+    },
+    async function (accessToken, refreshToken, profile, cb) {
+      const auths = new DatabaseArray('auth')
+      const authUser = await auths.find((auth) => auth?.providers?.google?.id === profile.id, {profile})
+      if (!authUser) {
+        await auths.push({
+          providers: {
+            google: profile
+          }
+        })
+      } else {
+        await (authUser.providers.google = profile)
+      }
+      cb(null, profile)
+    }
+  ));
 
+  app.get(
+    '/oauth2/signin-with-google',
+    (req, res, next) => {
+       passport.authenticate(
+        'google',
+        {
+          scope:[ 'email', 'profile' ],
+          state: JSON.stringify({url: req.query.url})
+         }
+        )
+       (req,res,next)
+    }
+  );
+  app.get('/oauth2/google/callback',
+    passport.authenticate('google', {
+        failureRedirect: '/error',
+        session: false
+      }
+    ),
+    function (req, res) {
+      const state = JSON.parse(req.query.state)
+      res.redirect(state.url)
+    });
+}
 
 passport.use(
   'signup',
