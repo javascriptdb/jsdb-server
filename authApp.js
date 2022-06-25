@@ -26,7 +26,6 @@ passport.use(
   )
 );
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  console.log((new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString())
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -54,7 +53,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
        passport.authenticate(
         'google',
         {
-          scope:[ 'email', 'profile' ],
+          scope:[ 'email', 'profile', 'openid'],
           state: JSON.stringify({url: req.query.url})
          }
         )
@@ -68,8 +67,14 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       }
     ),
     function (req, res) {
-      const state = JSON.parse(req.query.state)
-      res.redirect(state.url)
+      const user = req.user;
+      const state = JSON.parse(req.query.state);
+      const token = jwt.sign({ user }, process.env.JWT_SECRET);
+      res.send(`
+        <script>
+           window.opener.postMessage("${token}", "${state.url}");
+        </script>
+      `)
     });
 }
 
