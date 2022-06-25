@@ -11,7 +11,7 @@
   "author": "jpcapdevila",
   "license": "SSPL",
   "dependencies": {
-    "@jsdb/sdk": "^0.0.34",
+    "@jsdb/sdk": "^0.0.36",
     "acorn": "^8.7.1",
     "adm-zip": "^0.5.9",
     "bcryptjs": "^2.4.3",

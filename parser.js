@@ -27,6 +27,9 @@ export function functionToWhere(fn, thisArg) {
             if(node.type === 'BinaryExpression') {
                 string += '('
             }
+            if(node.type === 'CallExpression' && node.callee.object.regex) {
+
+            }
             if(node.type === 'MemberExpression') {
                 if(node.object.name === param) {
                     const path = fn.substring(node.object.end, node.end)
@@ -47,14 +50,13 @@ export function functionToWhere(fn, thisArg) {
                 }
                 this.skip()
             }
-            // Implement in a safe way
-            // if(node.type === 'NewExpression') {
-            //     string += JSON.stringify(eval(fn.substring(node.start, node.end)))
-            //     if(prop === 'left') {
-            //         string += getOperator(parent.operator)
-            //     }
-            //     this.skip()
-            // }
+            if(node.type === 'NewExpression' && node.callee.name === 'Date') {
+                string += JSON.stringify(new Date())
+                if(prop === 'left') {
+                    string += getOperator(parent.operator)
+                }
+                this.skip()
+            }
         },
         leave(node, parent, prop, index) {
             if(node.type === 'LogicalExpression') {

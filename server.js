@@ -20,8 +20,7 @@ import {
   rules,
   triggers
 } from "./lifecycleMiddleware.js";
-import {memoizedRun} from "./vm.js";
-import {opHandlers} from "./opHandlersBetterSqlite.js";
+import {opHandlers} from "./opHandlersSqlite.js";
 import jwt from "jsonwebtoken";
 
 const wsServer = new WebSocketServer({ noServer: true });
@@ -84,7 +83,7 @@ wsServer.on('connection', socket => {
       } else if (parsedMessage.operation === 'filter') {
         const {collection, operations, operation, eventName} = parsedMessage;
         const serverEventName = collection;
-        function collectionChangeHandler(changeData) {
+        async function collectionChangeHandler(changeData) {
           if(changeData.event === 'drop') {
             socket.send(JSON.stringify({
               content: changeData.event,
@@ -93,7 +92,7 @@ wsServer.on('connection', socket => {
             }));
           } else {
             try {
-              const filteredResult = opHandlers.filter({collection, operations});
+              const filteredResult = await opHandlers.filter({collection, operations});
               socket.send(JSON.stringify({
                 content: 'reset',
                 value: filteredResult,
@@ -147,16 +146,16 @@ try {
   console.error(e);
 }
 
+if(process.env.RATE_LIMIT) {
+  // Apply the rate limiting middleware to all requests
+  app.use(rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: process.env.RATE_LIMIT,
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  }))
+}
 
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: process.env.RATE_LIMIT || 10000,
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-})
-
-// Apply the rate limiting middleware to all requests
-app.use(limiter)
 
 app.use(cors());
 const regexpIsoDate = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;

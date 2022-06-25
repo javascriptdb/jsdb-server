@@ -4,7 +4,7 @@ import JwtStrategy from "passport-jwt";
 import passport from "passport";
 import {Strategy as localStrategy} from 'passport-local';
 import bcrypt from "bcryptjs";
-import {opHandlers} from "./opHandlersBetterSqlite.js";
+import {opHandlers} from "./opHandlersSqlite.js";
 
 const app = express();
 

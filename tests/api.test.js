@@ -136,6 +136,18 @@ await test('filter message using .filter() and thisArg', async() => {
     assert.equal(msgs[0].text, 'FUN!')
 })
 
+await test('filter message using .filter() with date', async() => {
+    const msgs = await msgsArray.filter(msg => msg.date < new Date());
+    assert.equal(msgs.length, 1)
+    assert.equal(msgs[0].text, 'FUN!')
+})
+
+await test('filter message using .filter() with LIKE', async() => {
+    const msgs = await msgsArray.filter(msg => /U/.test(msg.text) === true);
+    assert.equal(msgs.length, 1)
+    assert.equal(msgs[0].text, 'FUN!')
+})
+
 await test('slice messages to get 1 message', async() => {
     const msgs = await msgsArray.slice(0,1);
     assert.equal(msgs.length, 1)
