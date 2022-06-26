@@ -6,6 +6,8 @@ import {Strategy as localStrategy} from 'passport-local';
 import bcrypt from "bcryptjs";
 import {opHandlers} from "./opHandlersBetterSqlite.js";
 import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
+import {Strategy as GithubStrategy} from 'passport-github2';
+
 import {DatabaseArray} from '@jsdb/sdk';
 
 const app = express();
@@ -25,6 +27,41 @@ passport.use(
     }
   )
 );
+async function oAuth2LoginHandler(accessToken, refreshToken, profile, cb) {
+  const auths = new DatabaseArray('auth')
+  const emails = profile.emails.map(email => email.value);
+  const authUser = await auths.find((auth) => {
+    let match = false;
+    for(const provider of  Object.values(auth?.providers || {})) {
+      const providerMatched = provider?.emails?.find(email => emails.includes(email.value));
+      if(providerMatched) {
+        match = true;
+        break
+      }
+    }
+    return match;
+  }, {profile, emails})
+  if (!authUser) {
+    await auths.push({
+      providers: {
+        [profile.provider]: profile
+      }
+    })
+  } else {
+    await (auths[authUser.id].providers[profile.provider] = profile)
+  }
+  return cb(null, profile)
+}
+function oAuth2CallbackHandler(req, res) {
+  const user = req.user;
+  const state = JSON.parse(req.query.state);
+  const token = jwt.sign({ user }, process.env.JWT_SECRET);
+  res.send(`
+        <script>
+           window.opener.postMessage("${token}", "${state.url}");
+        </script>
+      `)
+}
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
@@ -32,18 +69,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       callbackURL: (new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString(),
     },
     async function (accessToken, refreshToken, profile, cb) {
-      const auths = new DatabaseArray('auth')
-      const authUser = await auths.find((auth) => auth?.providers?.google?.id === profile.id, {profile})
-      if (!authUser) {
-        await auths.push({
-          providers: {
-            google: profile
-          }
-        })
-      } else {
-        await (authUser.providers.google = profile)
-      }
-      cb(null, profile)
+       return oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
     }
   ));
 
@@ -67,14 +93,42 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       }
     ),
     function (req, res) {
-      const user = req.user;
-      const state = JSON.parse(req.query.state);
-      const token = jwt.sign({ user }, process.env.JWT_SECRET);
-      res.send(`
-        <script>
-           window.opener.postMessage("${token}", "${state.url}");
-        </script>
-      `)
+      oAuth2CallbackHandler(req, res)
+    });
+}
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  passport.use(new GithubStrategy({
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: (new URL('/auth/oauth2/github/callback', process.env.SERVER_URL)).toString(),
+      scope: ['user:email']
+    },
+    async function (accessToken, refreshToken, profile, cb) {
+      await oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
+    }
+  ));
+
+  app.get(
+    '/oauth2/signin-with-github',
+    (req, res, next) => {
+      passport.authenticate(
+        'github',
+        {
+          scope: [ 'user:email', 'read:user' ],
+          state: JSON.stringify({url: req.query.url})
+        }
+      )
+      (req,res,next)
+    }
+  );
+  app.get('/oauth2/github/callback',
+    passport.authenticate('github', {
+        failureRedirect: '/error',
+        session: false
+      }
+    ),
+    function (req, res) {
+       oAuth2CallbackHandler(req, res)
     });
 }
 
