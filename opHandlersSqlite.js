@@ -181,6 +181,7 @@ export const opHandlers = {
             const result = await runPromise('get', query, queryParams)
             return result?.data?.count;
         } else {
+            console.log(query)
             const result = await runPromise('all', query, queryParams)
             const mapOp = operations.find(op => op.type === 'map');
             const objects = rowsToObjects(result.data || []);
