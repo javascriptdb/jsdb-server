@@ -20,7 +20,7 @@ import {
   rules,
   triggers
 } from "./lifecycleMiddleware.js";
-import {opHandlers} from "./opHandlersSqlite.js";
+import {opHandlers} from "./opHandlersBetterSqlite.js";
 import jwt from "jsonwebtoken";
 
 const wsServer = new WebSocketServer({ noServer: true });
@@ -77,7 +77,7 @@ wsServer.on('connection', socket => {
             content: 'value'
           }));
         }
-        const document = await opHandlers.get({collection, id})
+        const document = opHandlers.get({collection, id})
         documentChangeHandler(document)
         realtimeListeners.on(eventName, documentChangeHandler)
       } else if (parsedMessage.operation === 'filter') {
@@ -92,7 +92,7 @@ wsServer.on('connection', socket => {
             }));
           } else {
             try {
-              const filteredResult = await opHandlers.filter({collection, operations});
+              const filteredResult = opHandlers.filter({collection, operations});
               socket.send(JSON.stringify({
                 content: 'reset',
                 value: filteredResult,
@@ -106,7 +106,7 @@ wsServer.on('connection', socket => {
           }
         }
         try {
-          const filteredResult = await opHandlers.filter({collection, operations});
+          const filteredResult = opHandlers.filter({collection, operations});
           socket.send(JSON.stringify({
             content: 'reset',
             value: filteredResult,
@@ -137,7 +137,7 @@ if(runningAsLibrary) {
 }
 
 try {
-  const bundles = await opHandlers.getAll({collection: 'bundles'});
+  const bundles = opHandlers.getAll({collection: 'bundles'});
   const currentDbBundle = bundles[0];
   if(currentDbBundle) {
     await importFromBase64(currentDbBundle.file.string);

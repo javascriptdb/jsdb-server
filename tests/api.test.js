@@ -1,5 +1,5 @@
 import {start} from "../server.js";
-import {setServerUrl, DatabaseArray, DatabaseMap, auth} from "@jsdb/sdk";
+import {setServerUrl, DatabaseArray, DatabaseMap, auth, functions} from "@jsdb/sdk";
 import * as assert from "assert";
 const msgsArray = new DatabaseArray('msgs');
 const msgsMap = new DatabaseMap('msgs');
@@ -287,6 +287,17 @@ await test('clear logs', async() => {
     const size = await logsMap.size;
     assert.deepStrictEqual(size, 0)
 })
+
+await test('call remote function', async() => {
+    const result = await functions.helloWorld();
+    assert.deepStrictEqual(result.message, 'IT WORKS!')
+});
+
+await test('call function & remotely insert 1000 records', async() => {
+    const result = await functions.x();
+    console.log('Remote insert 1000 time', result.time)
+    assert.deepStrictEqual(result.time < 100, true)
+});
 
 console.log('PASSED',passedMap.size)
 console.log('FAILED',failedMap.size)

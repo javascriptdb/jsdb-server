@@ -1,6 +1,6 @@
 import express from 'express';
 import {resolveMiddlewareFunction, rules, triggers} from "./lifecycleMiddleware.js";
-import {opHandlers} from "./opHandlersSqlite.js";
+import {opHandlers} from "./opHandlersBetterSqlite.js";
 
 const app = express();
 
@@ -32,7 +32,7 @@ app.use(async (req, res, next) => {
 
 app.post('/filter', async (req, res, next) => {
     try {
-        const result = await opHandlers.filter(req.body);
+        const result = opHandlers.filter(req.body);
         res.send({value: result});
         next();
     } catch (e) {
@@ -43,7 +43,7 @@ app.post('/filter', async (req, res, next) => {
 
 app.post('/find', async (req, res, next) => {
     try {
-        const result = await opHandlers.find(req.body);
+        const result = opHandlers.find(req.body);
         res.send({value: result || null});
         next();
     } catch (e) {
@@ -54,7 +54,7 @@ app.post('/find', async (req, res, next) => {
 
 app.post('/map', async (req, res, next) => {
     try {
-        const mapResult = await opHandlers.map(req.body);
+        const mapResult = opHandlers.map(req.body);
         res.send(mapResult);
         next();
     } catch (e) {
@@ -65,7 +65,7 @@ app.post('/map', async (req, res, next) => {
 
 app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) => {
     try {
-        const array = await opHandlers.getAll(req.body);
+        const array = opHandlers.getAll(req.body);
         res.send(array || []);
         next();
     } catch (e) {
@@ -76,7 +76,7 @@ app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) 
 
 app.post(['/slice'], async (req, res, next) => {
     try {
-        const array = await opHandlers.slice(req.body);
+        const array = opHandlers.slice(req.body);
         res.send(array || []);
         next();
     } catch (e) {
@@ -87,7 +87,7 @@ app.post(['/slice'], async (req, res, next) => {
 
 app.post('/has', async (req, res, next) => {
     try {
-        const exists = await opHandlers.has(req.body);
+        const exists = opHandlers.has(req.body);
         res.send({value: exists});
         next();
     } catch (e) {
@@ -98,7 +98,7 @@ app.post('/has', async (req, res, next) => {
 
 app.post('/keys', async (req, res, next) => {
     try {
-        const ids = await opHandlers.keys(req.body);
+        const ids = opHandlers.keys(req.body);
         res.send(ids);
         next();
     } catch (e) {
@@ -109,11 +109,11 @@ app.post('/keys', async (req, res, next) => {
 
 app.post('/push', async (req, res, next) => {
     try {
-        const result = await opHandlers.set(req.body);
-        const count = await opHandlers.size(req.body);
+        const result = opHandlers.set(req.body);
+        const count = opHandlers.size(req.body);
         req.insertedId = result.insertedId;
         res.send({value: count});
-        const documentData = await opHandlers.get({collection:req.body.collection,id: result.insertedId});
+        const documentData = opHandlers.get({collection:req.body.collection,id: result.insertedId});
         req.realtimeListeners.emit(req.body.collection, {event: 'add', document: documentData})
         next();
     } catch (e) {
@@ -124,7 +124,7 @@ app.post('/push', async (req, res, next) => {
 
 app.post(['/size', '/length'], async (req, res, next) => {
     try {
-        const count = await opHandlers.size(req.body);
+        const count = opHandlers.size(req.body);
         res.send({value: count});
         next();
     } catch (e) {
@@ -135,7 +135,7 @@ app.post(['/size', '/length'], async (req, res, next) => {
 
 app.post('/clear', async (req, res, next) => {
     try {
-        await opHandlers.clear(req.body);
+        opHandlers.clear(req.body);
         res.sendStatus(200);
         next();
     } catch (e) {
@@ -146,7 +146,7 @@ app.post('/clear', async (req, res, next) => {
 app.post('/delete', async (req, res, next) => {
     try {
         const {collection, id, path} = req.body;
-        const result = await opHandlers.delete({collection, id, path});
+        const result = opHandlers.delete({collection, id, path});
         res.result = result;
         res.send({value: result.deletedCount > 0});
         next();
@@ -159,9 +159,9 @@ app.post('/delete', async (req, res, next) => {
 app.post('/set', async (req, res, next) => {
     try {
         const {collection, id, value, path} = req.body;
-        const result = await opHandlers.set({collection, id, value, path});
+        const result = opHandlers.set({collection, id, value, path});
         res.result = result;
-        const documentData = await opHandlers.get({collection, id});
+        const documentData = opHandlers.get({collection, id});
         if (result.inserted) { // It was new
             req.realtimeListeners.emit(collection, {event: 'add', document: documentData})
         } else { //Modified existing one
@@ -179,7 +179,7 @@ app.post('/set', async (req, res, next) => {
 app.post('/get', async (req, res, next) => {
     try {
         const {collection, id, path} = req.body;
-        const result = await opHandlers.get({collection, id, path});
+        const result = opHandlers.get({collection, id, path});
         res.send({value: result});
         next();
     } catch (e) {

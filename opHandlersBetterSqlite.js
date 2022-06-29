@@ -4,6 +4,7 @@ import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
 const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 db.pragma( 'journal_mode = WAL;' );
+let preparedStatementMap = new Map();
 
 export const uuid = () => {
     const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -22,7 +23,13 @@ const tablesCreated = new Map();
 
 function dbCommand(cmd, sql, parameters = {}) {
     try {
-        const statement = db.prepare(sql);
+        let statement;
+        if(preparedStatementMap.has(sql)) {
+          statement = preparedStatementMap.get(sql);
+        } else {
+          statement = db.prepare(sql);
+          preparedStatementMap.set(sql, statement)
+        }
         const data = statement[cmd](parameters)
         return {statement, data}
     } catch (e) {

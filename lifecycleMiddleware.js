@@ -3,7 +3,7 @@ import url from "url";
 import fsPromises from "fs/promises";
 import AdmZip from "adm-zip";
 import operationFallback from "./operationFallback.js";
-import {forceIndex} from "./opHandlersSqlite.js";
+import {forceIndex} from "./opHandlersBetterSqlite.js";
 
 export const triggers = {};
 export const rules = {};

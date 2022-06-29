@@ -5,6 +5,7 @@ import {functionToWhere} from "./parser.js";
 
 export const db = new sqlite3.Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 db.run( 'PRAGMA journal_mode = WAL;' );
+let preparedStatementMap = new Map();
 
 export const uuid = () => {
     const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -21,9 +22,16 @@ export const uuid = () => {
 
 const tablesCreated = new Map();
 
-async function runPromise(cmd, ...args) {
+async function runPromise(cmd, sql, params) {
     return new Promise((resolve, reject) => {
-        db[cmd](...args, function (error, data) {
+        let statement;
+        if(preparedStatementMap.has(sql)) {
+            statement = preparedStatementMap.get(sql);
+        } else {
+            statement = db.prepare(sql);
+            preparedStatementMap.set(sql, statement)
+        }
+        statement[cmd](params, function (error, data) {
             if (error) {
                 reject(error)
             } else {
