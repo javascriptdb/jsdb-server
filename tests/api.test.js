@@ -294,7 +294,7 @@ await test('call remote function', async() => {
 });
 
 await test('call function & remotely insert 1000 records', async() => {
-    const result = await functions.x();
+    const result = await functions.remoteInserts();
     console.log('Remote insert 1000 time', result.time)
     assert.deepStrictEqual(result.time < 100, true)
 });
