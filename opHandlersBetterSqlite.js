@@ -2,7 +2,7 @@ import {memoizedRun} from "./vm.js";
 import _ from "lodash-es"
 import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
-const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
+export const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 db.pragma( 'journal_mode = WAL;' );
 let preparedStatementMap = new Map();
 
@@ -116,7 +116,7 @@ export const opHandlers = {
                 value: JSON.stringify(value)
             })
         }
-        const inserted = result.statement.changes === 0;
+        const inserted = result?.statement?.changes === 0;
         return {inserted, insertedId: id}
     },
      push({collection, value}) {
@@ -219,3 +219,5 @@ function safe(string) {
     })
     return string;
 }
+
+global.opHandlers = opHandlers;

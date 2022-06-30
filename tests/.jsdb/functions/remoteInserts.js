@@ -1,4 +1,4 @@
-import {opHandlers} from "@jsdb/server/opHandlersBetterSqlite.js";
+const opHandlers = global.opHandlers;
 export default async function () {
   const timeStart = Date.now();
   for(let i = 0; i<1000;i++) {
