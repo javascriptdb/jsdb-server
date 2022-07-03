@@ -27,110 +27,6 @@ passport.use(
     }
   )
 );
-async function oAuth2LoginHandler(accessToken, refreshToken, profile, cb) {
-  const auths = new DatabaseArray('auth')
-  const emails = profile.emails.map(email => email.value);
-  const authUser = await auths.find((auth) => {
-    let match = false;
-    for(const provider of  Object.values(auth?.providers || {})) {
-      const providerMatched = provider?.emails?.find(email => emails.includes(email.value));
-      if(providerMatched) {
-        match = true;
-        break
-      }
-    }
-    return match;
-  }, {profile, emails})
-  if (!authUser) {
-    await auths.push({
-      providers: {
-        [profile.provider]: profile
-      }
-    })
-  } else {
-    await (auths[authUser.id].providers[profile.provider] = profile)
-  }
-  return cb(null, profile)
-}
-function oAuth2CallbackHandler(req, res) {
-  const user = req.user;
-  const state = JSON.parse(req.query.state);
-  const token = jwt.sign({ user }, process.env.JWT_SECRET);
-  res.send(`
-        <script>
-           window.opener.postMessage("${token}", "${state.url}");
-        </script>
-      `)
-}
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(new GoogleStrategy({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: (new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString(),
-    },
-    async function (accessToken, refreshToken, profile, cb) {
-       return oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
-    }
-  ));
-
-  app.get(
-    '/oauth2/signin-with-google',
-    (req, res, next) => {
-       passport.authenticate(
-        'google',
-        {
-          scope:[ 'email', 'profile', 'openid'],
-          state: JSON.stringify({url: req.query.url})
-         }
-        )
-       (req,res,next)
-    }
-  );
-  app.get('/oauth2/google/callback',
-    passport.authenticate('google', {
-        failureRedirect: '/error',
-        session: false
-      }
-    ),
-    function (req, res) {
-      oAuth2CallbackHandler(req, res)
-    });
-}
-if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-  passport.use(new GithubStrategy({
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: (new URL('/auth/oauth2/github/callback', process.env.SERVER_URL)).toString(),
-      scope: ['user:email']
-    },
-    async function (accessToken, refreshToken, profile, cb) {
-      await oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
-    }
-  ));
-
-  app.get(
-    '/oauth2/signin-with-github',
-    (req, res, next) => {
-      passport.authenticate(
-        'github',
-        {
-          scope: [ 'user:email', 'read:user' ],
-          state: JSON.stringify({url: req.query.url})
-        }
-      )
-      (req,res,next)
-    }
-  );
-  app.get('/oauth2/github/callback',
-    passport.authenticate('github', {
-        failureRedirect: '/error',
-        session: false
-      }
-    ),
-    function (req, res) {
-       oAuth2CallbackHandler(req, res)
-    });
-}
 
 passport.use(
   'signup',
@@ -202,7 +98,7 @@ app.post(
       async (err, user, info) => {
         try {
           if (err || !user) {
-              console.error(err)
+            console.error(err)
             const error = new Error('An error occurred.');
             return next(error);
           }
@@ -213,7 +109,7 @@ app.post(
             async (error) => {
               if (error) return next(error);
 
-              const token = jwt.sign({ user: { id: user.id, email: user.email } }, process.env.JWT_SECRET);
+              const token = jwt.sign(getTokenPayload(user, 'email'), process.env.JWT_SECRET);
 
               return res.json({ token, userId: user.id });
             }
@@ -226,4 +122,149 @@ app.post(
   }
 );
 
+function getTokenPayload(user, provider) {
+  // TODO: for now we support email, but if we are going to support emails on tokens, this will need to be updated accross all old tokens when a new email y added?
+  if(provider === 'google') {
+    return { user: { id: user.id, email: user.providers[provider]._json.email } }
+  } else if(provider === 'github') {
+    let email = user.providers[provider]._json.email;
+    // // for now, we just save the email the user used to login, in github case, this can be null if the user does not put on the public profile its email, but we can grab it from emails property, but we will need a way to decided which email is the correct one
+    // if(!email) {
+    //   if (providers[provider].emails.length === 1) {
+    //     email = providers[provider].emails[0]
+    //   } else if (providers[provider].emails.length > 1) {
+    //     //decide how we will choose the correct one
+    //   }
+    // }
+    return { user: { id: user.id, email } }
+  } else if (provider === 'email') {
+    return { user: { id: user.id, email: user.email} }
+  }
+}
+async function oAuth2LoginHandler(accessToken, refreshToken, profile, cb) {
+  const auths = new DatabaseArray('auths')
+  const emails = profile.emails.map(email => email.value);
+  let authUser = await auths.find((auth) => {
+    let match = false;
+    for(const provider of  Object.values(auth?.providers || {})) {
+      const providerMatched = provider?.emails?.find(email => emails.includes(email.value));
+      if(providerMatched) {
+        match = true;
+        break
+      }
+    }
+    return match;
+  }, {profile, emails})
+  let id;
+  if (!authUser) {
+    id = await auths.push({
+      providers: {
+        [profile.provider]: profile
+      }
+    })
+  } else {
+    await (auths[authUser.id].providers[profile.provider] = profile);
+    id = authUser.id;
+  }
+  authUser = await auths[id]
+  return cb(null, authUser)
+}
+function oAuth2CallbackHandler(req, res, provider) {
+  const user = req.user;
+  const state = JSON.parse(req.query.state);
+  const token = jwt.sign(getTokenPayload(user, provider), process.env.JWT_SECRET);
+  const message = JSON.stringify({token, user});
+  res.send(`
+        <script>
+           window.opener.postMessage(${message}, "${state.url}");
+        </script>
+      `)
+}
+async function linkWithProvider(req, res){
+  try {
+    // TODO put this in TX
+    const auths = new DatabaseArray('auths');
+    if(!req.body.oldToken) throw 'oldToken is required';
+    if(!req.body.newToken) throw 'newToken is required';
+    const verifiedOldToken = jwt.verify(req.body.oldToken, process.env.JWT_SECRET);
+    const verifiedNewToken = jwt.verify(req.body.newToken, process.env.JWT_SECRET);
+    if(verifiedOldToken.user.id === verifiedNewToken.user.id) return;
+    const oldUser = await auths[verifiedOldToken.user.id];
+    const newUser = await auths[verifiedNewToken.user.id];
+    oldUser.providers = {...oldUser.providers, ...newUser.providers}
+    await (auths[oldUser.id].providers = oldUser.providers)
+    await (delete auths[newUser.id])
+  } catch (e) {
+    res.status(500).send(e);
+  }
+}
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: (new URL('/auth/oauth2/google/callback', process.env.SERVER_URL)).toString(),
+    },
+    async (accessToken, refreshToken, profile, cb) => oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
+  ));
+
+  app.get(
+    '/oauth2/signin-with-google',
+    (req, res, next) => {
+       passport.authenticate(
+        'google',
+        {
+          scope:[ 'email', 'profile', 'openid'],
+          state: JSON.stringify({url: req.query.url}),
+          prompt: 'select_account'
+         }
+        )
+       (req,res,next)
+    }
+  );
+  app.get('/oauth2/google/callback',
+    passport.authenticate('google', {
+        failureRedirect: '/error',
+        session: false
+      }
+    ),
+    async (req, res) => oAuth2CallbackHandler(req, res, 'google')
+  );
+}
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  passport.use(new GithubStrategy({
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: (new URL('/auth/oauth2/github/callback', process.env.SERVER_URL)).toString(),
+      scope: ['user:email']
+    },
+    async (accessToken, refreshToken, profile, cb) => oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
+  ));
+
+  app.get(
+    '/oauth2/signin-with-github',
+    (req, res, next) => {
+      passport.authenticate(
+        'github',
+        {
+          scope: [ 'user:email', 'read:user' ],
+          state: JSON.stringify({url: req.query.url}),
+          prompt: 'select_account'
+        }
+      )
+      (req,res,next)
+    }
+  );
+  app.get('/oauth2/github/callback',
+    passport.authenticate('github', {
+        failureRedirect: '/error',
+        session: false
+      }
+    ),
+    async (req, res) =>  oAuth2CallbackHandler(req, res, 'github')
+  );
+}
+app.post(
+  '/link-providers',
+  async (req, res) => linkWithProvider(req , res)
+);
 export default app;
