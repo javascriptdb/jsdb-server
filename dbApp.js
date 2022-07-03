@@ -110,9 +110,8 @@ app.post('/keys', async (req, res, next) => {
 app.post('/push', async (req, res, next) => {
     try {
         const result = opHandlers.set(req.body);
-        const count = opHandlers.size(req.body);
         req.insertedId = result.insertedId;
-        res.send({value: count});
+        res.send({value:  result.insertedId});
         const documentData = opHandlers.get({collection:req.body.collection,id: result.insertedId});
         req.realtimeListeners.emit(req.body.collection, {event: 'add', document: documentData})
         next();
