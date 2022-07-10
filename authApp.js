@@ -123,19 +123,10 @@ app.post(
 );
 
 function getTokenPayload(user, provider) {
-  // TODO: for now we support email, but if we are going to support emails on tokens, this will need to be updated accross all old tokens when a new email y added?
   if(provider === 'google') {
     return { user: { id: user.id, email: user.providers[provider]._json.email } }
   } else if(provider === 'github') {
     let email = user.providers[provider]._json.email;
-    // // for now, we just save the email the user used to login, in github case, this can be null if the user does not put on the public profile its email, but we can grab it from emails property, but we will need a way to decided which email is the correct one
-    // if(!email) {
-    //   if (providers[provider].emails.length === 1) {
-    //     email = providers[provider].emails[0]
-    //   } else if (providers[provider].emails.length > 1) {
-    //     //decide how we will choose the correct one
-    //   }
-    // }
     return { user: { id: user.id, email } }
   } else if (provider === 'email') {
     return { user: { id: user.id, email: user.email} }
@@ -235,7 +226,6 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       callbackURL: (new URL('/auth/oauth2/github/callback', process.env.SERVER_URL)).toString(),
-      scope: ['user:email']
     },
     async (accessToken, refreshToken, profile, cb) => oAuth2LoginHandler(accessToken, refreshToken, profile, cb)
   ));
@@ -268,3 +258,4 @@ app.post(
   async (req, res) => linkWithProvider(req , res)
 );
 export default app;
+
