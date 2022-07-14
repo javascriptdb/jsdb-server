@@ -130,12 +130,12 @@ export const opHandlers = {
             const result = dbCommand('run', `UPDATE ${collection} SET value = json_remove(value,'$.${safe(path.join('.'))}') WHERE id = $id`, {
                 id,
             })
-            return {deletedCount: result.statement.changes};
+            return result.statement.changes > 0;
         } else {
             const result = dbCommand('run', `DELETE FROM ${collection} WHERE id = $id`, {
                 id
             })
-            return {deletedCount: result.data.changes};
+            return result.data.changes > 0;
         }
     },
      has({collection, id}) {

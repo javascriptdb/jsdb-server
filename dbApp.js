@@ -66,7 +66,7 @@ app.post('/map', async (req, res, next) => {
 app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) => {
     try {
         const array = opHandlers.getAll(req.body);
-        res.send(array || []);
+        res.send(array);
         next();
     } catch (e) {
         console.error(e);
@@ -77,7 +77,7 @@ app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) 
 app.post(['/slice'], async (req, res, next) => {
     try {
         const array = opHandlers.slice(req.body);
-        res.send(array || []);
+        res.send(array);
         next();
     } catch (e) {
         console.error(e);
@@ -110,9 +110,8 @@ app.post('/keys', async (req, res, next) => {
 app.post('/push', async (req, res, next) => {
     try {
         const result = opHandlers.set(req.body);
-        const count = opHandlers.size(req.body);
         req.insertedId = result.insertedId;
-        res.send({value: count});
+        res.send({value: result.insertedId});
         const documentData = opHandlers.get({collection:req.body.collection,id: result.insertedId});
         req.realtimeListeners.emit(req.body.collection, {event: 'add', document: documentData})
         next();
@@ -146,9 +145,8 @@ app.post('/clear', async (req, res, next) => {
 app.post('/delete', async (req, res, next) => {
     try {
         const {collection, id, path} = req.body;
-        const result = opHandlers.delete({collection, id, path});
-        res.result = result;
-        res.send({value: result.deletedCount > 0});
+        const wasDeleted = opHandlers.delete({collection, id, path});
+        res.send({value: wasDeleted});
         next();
     } catch (e) {
         console.error(e);

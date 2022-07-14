@@ -38,7 +38,6 @@ wsServer.on('connection', socket => {
           token = jwt.verify(parsedMessage.authorization.replaceAll('Bearer ',''), process.env.JWT_SECRET);
         }
         const ruleFunction = await resolveMiddlewareFunction('rules', parsedMessage.collection, parsedMessage.operation);
-        console.log(`Realtime ${parsedMessage.operation} rule:`, ruleFunction.toString())
         const ruleResult = await ruleFunction({...parsedMessage, user: token?.user})
         if (ruleResult) {
           // TODO : How do we pass this along for the full duration of the subscription
@@ -119,6 +118,15 @@ wsServer.on('connection', socket => {
           console.error('Error running filter')
         }
 
+      } else if(parsedMessage.operation === 'push') {
+        const {collection, operation, eventName} = parsedMessage;
+        const id = opHandlers.push(parsedMessage);
+        socket.send(JSON.stringify({
+          value: id,
+          eventName,
+          operation,
+          collection
+        }));
       }
     } catch (e) {
       console.error(e);
