@@ -230,17 +230,17 @@ async function test(name, callback) {
 //     assert.deepStrictEqual(size, 0)
 // })
 
-// await test('Insert 1000 logs', async() => {
-//     const startMs = Date.now();
-//     const promises = [];
-//     for(let i = 0; i<1000;i++) {
-//         promises.push(logsArray.push({type:'info',text:'Dummy log',date: new Date(),i}));
-//     }
-//     await Promise.all(promises);
-//     const endMs = Date.now();
-//     console.log('1k Write Time', endMs-startMs)
-//     // assert.deepStrictEqual(endMs-startMs<2000, true);
-// })
+await test('Insert 1000 logs', async() => {
+    const startMs = Date.now();
+    // const promises = [];
+    for(let i = 0; i<1000;i++) {
+        await logsArray.push({type:'info',text:'Dummy log',date: new Date(),i});
+    }
+    // await Promise.all(promises);
+    const endMs = Date.now();
+    console.log('1k Write Time', endMs-startMs)
+    // assert.deepStrictEqual(endMs-startMs<2000, true);
+})
 
 // await test('Get 1000', async() => {
 //     const startMs = Date.now();
@@ -329,17 +329,20 @@ async function test(name, callback) {
 //     assert.deepStrictEqual(size, 0)
 // })
 
-const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
-const wsLogs = new wsJsdb.DatabaseArray('logs');
-
-await test('WS insert 1000', async() => {
-    const startMs = Date.now();
-    for(let i = 0; i<10000;i++) {
-        await wsLogs.push({type:'info',text:'Dummy log',date: new Date(),i});
-    }
-    const endMs = Date.now();
-    console.log('1k Local Write Time', endMs-startMs)
-});
+// const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'https://jsdb-server-gre7hve6eq-uc.a.run.app'})
+// const wsLogs = new wsJsdb.DatabaseArray('logs');
+//
+// await test('WS insert 1000', async() => {
+//     const startMs = Date.now();
+//     for(let i = 0; i<100;i++) {
+//         const iStart = performance.now();
+//         await wsLogs.push({type:'info',text:'Dummy log',date: new Date(),i});
+//         const iEnd = performance.now();
+//         console.log('Individual', iStart)
+//     }
+//     const endMs = Date.now();
+//     console.log('1k WS Write Time', endMs-startMs)
+// });
 
 console.log('PASSED',passedMap.size)
 console.log('FAILED',failedMap.size)
