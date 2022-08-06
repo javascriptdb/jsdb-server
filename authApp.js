@@ -1,46 +1,59 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
-import JwtStrategy from 'passport-jwt';
 import passport from 'passport';
-import {Strategy as localStrategy} from 'passport-local';
+import { Strategy as CustomStrategy } from 'passport-custom';
+import {Strategy as LocalStrategy} from 'passport-local';
 import bcrypt from "bcryptjs";
-import {opHandlers} from "./opHandlersBetterSqlite.js";
 import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
 import {Strategy as GithubStrategy} from 'passport-github2';
+import {createAccessToken, validateAccessToken} from './authUtils.js'
 
 import {DatabaseArray} from '@jsdb/sdk';
-
+const users = new DatabaseArray('users')
+const accessTokens = new DatabaseArray('accessTokens')
 const app = express();
 
-passport.use(
-  new JwtStrategy.Strategy(
-    {
-      secretOrKey: process.env.JWT_SECRET,
-      jwtFromRequest: JwtStrategy.ExtractJwt.fromAuthHeaderAsBearerToken()
-    },
-    async (token, done) => {
-      try {
-        return done(null, token.user);
-      } catch (error) {
-        done(error);
-      }
+passport.use('token-custom', new CustomStrategy(
+  async function(req, done) {
+    try {
+      const token = req.get('Authorization').split('Bearer ')[1]
+      const accessToken = await validateAccessToken(token);
+      const user = await users[accessToken.userId];
+      done(null, user);
+    } catch (e) {
+      return req.res.status(401).send(e);
+      // not sure if `done(e)` is required
     }
-  )
-);
+  }
+));
 
 passport.use(
   'signup',
-  new localStrategy(
+  new LocalStrategy(
     {
       usernameField: 'email',
       passwordField: 'password'
     },
     async (email, password, done) => {
       try {
-        password = bcrypt.hashSync(password, 8);
-        const user = {credentials: {email, password}};
-        const result = opHandlers.set({collection:'users', value: user})
-        return done(null, {email, id: result.insertedId});
+        const existingUser = await users.find(user => user.auth?.providers?.JsDb?.credentials?.email === ctx.email, {ctx: {email}});
+        if(existingUser) throw 'This email is already used, login or claim email'
+        const credentials = {
+          email,
+          password: bcrypt.hashSync(password, 8)
+        }
+        let user = {
+          auth:{
+            providers: {
+              'JsDb': {
+                credentials,
+                verified: false
+              }
+            }
+          }
+        }
+        const userId = await users.push(user)
+        user = await users[userId];
+        return done(null, user);
       } catch (error) {
         done(error);
       }
@@ -50,17 +63,16 @@ passport.use(
 
 passport.use(
   'login',
-  new localStrategy(
+  new LocalStrategy(
     {
       usernameField: 'email',
       passwordField: 'password'
     },
     async (email, password, done) => {
       try {
-        const callbackFn = ((user) => user.credentials.email === email).toString()
-        const user = opHandlers.find({collection: 'users',callbackFn,thisArg:{email}})
+        const user = users.find((user) => user.auth?.providers?.JsDb?.credentials?.email === ctx.email, {ctx: email})
 
-        if(!bcrypt.compareSync(password, user.credentials.password)){
+        if(!bcrypt.compareSync(password, user.auth.providers.JsDb.credentials.password)){
           return done(null, false, {message: 'Invalid password'})
         }
 
@@ -81,8 +93,8 @@ app.post(
   passport.authenticate('signup', {session: false}),
   async (req, res) => {
     try {
-      const token = jwt.sign({ user: { id: req.user.id, email: req.user.email } }, process.env.JWT_SECRET);
-      res.send({ token, userId: req.user.id });
+      const token = await createAccessToken(req.user.id);
+      res.send({ token });
     } catch (e) {
       console.error(e);
       res.status(500).send(e);
@@ -108,9 +120,7 @@ app.post(
             { session: false },
             async (error) => {
               if (error) return next(error);
-
-              const token = jwt.sign(getTokenPayload(user, 'email'), process.env.JWT_SECRET);
-
+              const token = await createAccessToken(user.id)
               return res.json({ token, userId: user.id });
             }
           );
@@ -122,48 +132,54 @@ app.post(
   }
 );
 
-function getTokenPayload(user, provider) {
-  if(provider === 'google') {
-    return { user: { id: user.id, email: user.providers[provider]._json.email } }
-  } else if(provider === 'github') {
-    let email = user.providers[provider]._json.email;
-    return { user: { id: user.id, email } }
-  } else if (provider === 'email') {
-    return { user: { id: user.id, email: user.email} }
-  }
-}
-async function oAuth2LoginHandler(accessToken, refreshToken, profile, cb) {
-  const auths = new DatabaseArray('auths')
-  const emails = profile.emails.map(email => email.value);
-  let authUser = await auths.find((auth) => {
+async function getUserWithEmails(emails) {
+  return users.find((user) => {
     let match = false;
-    for(const provider of  Object.values(auth?.providers || {})) {
-      const providerMatched = provider?.emails?.find(email => emails.includes(email.value));
+    for(const [providerName, provider] of  Object.entries(user.auth?.providers || {})) {
+      let providerMatched;
+      if (providerName === 'JsDb') {
+        if (!provider?.verified) {
+          continue;
+        }
+        providerMatched = ctx.emails.includes(provider.credentials.email);
+      } else { // Oauth2
+        providerMatched = provider?.emails?.find(email => ctx.emails.includes(email.value));
+      }
       if(providerMatched) {
         match = true;
         break
       }
     }
     return match;
-  }, {profile, emails})
+  }, {ctx: {emails}})
+}
+
+async function oAuth2LoginHandler(accessToken, refreshToken, profile, cb) {
+  const emails = profile.emails?.map(email => email.value) || [];
+  let user;
+  if(emails.length > 0) {
+    user = await getUserWithEmails(emails);
+  }
   let id;
-  if (!authUser) {
-    id = await auths.push({
-      providers: {
-        [profile.provider]: profile
+  if (!user) {
+    id = await users.push({
+      auth: {
+        providers: {
+          [profile.provider]: profile
+        }
       }
     })
   } else {
-    await (auths[authUser.id].providers[profile.provider] = profile);
-    id = authUser.id;
+    await (users[user.id].auth.providers[profile.provider] = profile);
+    id = user.id;
   }
-  authUser = await auths[id]
-  return cb(null, authUser)
+  user = await users[id]
+  return cb(null, user)
 }
-function oAuth2CallbackHandler(req, res, provider) {
+async function oAuth2CallbackHandler(req, res) {
   const user = req.user;
   const state = JSON.parse(req.query.state);
-  const token = jwt.sign(getTokenPayload(user, provider), process.env.JWT_SECRET);
+  const token = await createAccessToken(user.id)
   const message = JSON.stringify({token, user});
   res.send(`
         <script>
@@ -174,17 +190,23 @@ function oAuth2CallbackHandler(req, res, provider) {
 async function linkWithProvider(req, res){
   try {
     // TODO put this in TX
-    const auths = new DatabaseArray('auths');
-    if(!req.body.oldToken) throw 'oldToken is required';
-    if(!req.body.newToken) throw 'newToken is required';
-    const verifiedOldToken = jwt.verify(req.body.oldToken, process.env.JWT_SECRET);
-    const verifiedNewToken = jwt.verify(req.body.newToken, process.env.JWT_SECRET);
-    if(verifiedOldToken.user.id === verifiedNewToken.user.id) return;
-    const oldUser = await auths[verifiedOldToken.user.id];
-    const newUser = await auths[verifiedNewToken.user.id];
-    oldUser.providers = {...oldUser.providers, ...newUser.providers}
-    await (auths[oldUser.id].providers = oldUser.providers)
-    await (delete auths[newUser.id])
+    const users = new DatabaseArray('users');
+    if (!req.body.oldToken) throw 'oldToken is required';
+    if (!req.body.newToken) throw 'newToken is required';
+    const verifiedOldToken = await validateAccessToken(req.body.oldToken);
+    const verifiedNewToken = await validateAccessToken(req.body.newToken);
+    if (verifiedOldToken.userId === verifiedNewToken.userId) return;
+    const oldUser = await users[verifiedOldToken.userId];
+    const newUser = await users[verifiedNewToken.userId];
+    oldUser.auth = {
+      ...oldUser.auth,
+      providers: {
+        ...(oldUser.auth?.providers || {}),
+        ...(newUser.auth?.providers || {})
+      }
+    }
+    await (users[oldUser.id].auth = oldUser.auth)
+    await (delete users[newUser.id])
   } catch (e) {
     res.status(500).send(e);
   }
@@ -256,6 +278,27 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
 app.post(
   '/link-providers',
   async (req, res) => linkWithProvider(req , res)
+);
+app.post(
+  '/revoke-tokens',
+  async (req, res) => {
+    const userId = req.body.userId;
+    if(!userId) throw 'userId is required';
+    const tokens  = await accessTokens.filter(accessToken => accessToken.userId === ctx.userId, {ctx:{userId}});
+    await Promise.all(
+      tokens.map(token => (delete accessTokens[token.id]))
+    );
+    return tokens.length
+  }
+);
+app.post(
+  '/verify-email',
+  async (req, res) => {
+    const userId = req.body.userId;
+    if(!userId) throw 'userId is required';
+    await (users[userId].auth.providers.JsDb.verified = true);
+    return true
+  }
 );
 export default app;
 
