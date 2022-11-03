@@ -1,5 +1,5 @@
 import {memoizedRun} from "./vm.js";
-import _ from "lodash-es"
+import _ from "lodash-es";
 import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
 export const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
@@ -194,7 +194,6 @@ export const opHandlers = {
             if(mapOp) {
                 console.timeEnd('Filter exec')
                 return memoizedRun({array: objects, ...mapOp.data.thisArg}, `array.map(${mapOp.data.callbackFn})`)
-
             } else {
                 console.timeEnd('Filter exec')
                 return objects;
