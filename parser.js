@@ -4,7 +4,7 @@ import _ from "lodash-es";
 import * as assert from "assert";
 
 export function functionToWhere(fn, thisArg) {
-  const ast = acorn.parse(fn);
+  const ast = acorn.parse(fn, {});
   const arrowFunction = ast.body[0].expression;
   assert.equal(arrowFunction.type, 'ArrowFunctionExpression', 'Filter or find callbacks should be arrow functions.')
   assert.equal(arrowFunction.params.length, 1, 'Filter or find callbacks only receive one argument.')
