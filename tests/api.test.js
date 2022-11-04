@@ -25,85 +25,85 @@ async function test(name, callback) {
 //
 // }
 //
-// await test('Initial clear map using .clear()', async() => {
-//     await db.msgs.clear();
-// })
-//
-// await test('set message', async() => {
-//     await db.msgs.set('x',{text: 'xyz'});
-// })
-//
-// await test('get keys using .keys()', async() => {
-//     const keys = await db.msgs.keys();
-//     assert.deepStrictEqual(keys, ['x'])
-// })
-//
-// await test('get values using .values()', async() => {
-//     const values = await db.msgs.values();
-//     assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
-// })
-//
-// await test('get message using .get()', async() => {
-//     const startMs = Date.now();
-//     const msg = await db.msgs.get('x');
-//     const endMs = Date.now();
-//     console.log('Get by id time', endMs - startMs)
-//     assert.equal(msg.text, 'xyz')
-// })
-//
-// await test('set message', async() => {
-//     await db.msgs.set('x',{text: 'xyz'});
-// })
-//
-// await test('get keys using .keys()', async() => {
-//     const keys = await db.msgs.keys();
-//     assert.deepStrictEqual(keys, ['x'])
-// })
-//
-// await test('get values using .values()', async() => {
-//     const values = await db.msgs.values();
-//     assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
-// })
-//
-// await test('get message using .get()', async() => {
-//     const msg = await db.msgs.get('x');
-//     assert.equal(msg.text, 'xyz')
-// })
-//
-// await test('check if message exists using .has()', async() => {
-//     const xExists = await db.msgs.has('x');
-//     const yExists = await db.msgs.has('y');
-//     assert.equal(xExists, true)
-//     assert.equal(yExists, false)
-// })
-//
-// await test('get size using .size', async() => {
-//     const size = await db.msgs.size;
-//     assert.equal(size, 1)
-// })
-//
-// await test('get size using .length', async() => {
-//     const size = await db.msgs.length;
-//     assert.equal(size, 1)
-// })
-//
-// await test('get message using dot notation', async() => {
-//     const msg = await db.msgs.x;
-//     assert.equal(msg.text, 'xyz')
-// })
-//
-// await test('get message property using dot notation', async() => {
-//     const text = await db.msgs.x.text;
-//     assert.equal(text, 'xyz')
-// })
-//
-// await test('delete message property', async() => {
-//     const wasDeleted = await delete db.msgs.x.text;
-//     await new Promise(resolve => setTimeout(resolve, 1000))
-//     const text = await db.msgs.x.text;
-//     assert.equal(text, undefined)
-//     assert.equal(wasDeleted, true)
-// })
+await test('Initial clear map using .clear()', async() => {
+    await db.msgs.clear();
+})
+
+await test('set message', async() => {
+    await db.msgs.set('x',{text: 'xyz'});
+})
+
+await test('get keys using .keys()', async() => {
+    const keys = await db.msgs.keys();
+    assert.deepStrictEqual(keys, ['x'])
+})
+
+await test('get values using .values()', async() => {
+    const values = await db.msgs.values();
+    assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
+})
+
+await test('get message using .get()', async() => {
+    const startMs = Date.now();
+    const msg = await db.msgs.get('x');
+    const endMs = Date.now();
+    console.log('Get by id time', endMs - startMs)
+    assert.equal(msg.text, 'xyz')
+})
+
+await test('set message', async() => {
+    await db.msgs.set('x',{text: 'xyz'});
+})
+
+await test('get keys using .keys()', async() => {
+    const keys = await db.msgs.keys();
+    assert.deepStrictEqual(keys, ['x'])
+})
+
+await test('get values using .values()', async() => {
+    const values = await db.msgs.values();
+    assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
+})
+
+await test('get message using .get()', async() => {
+    const msg = await db.msgs.get('x');
+    assert.equal(msg.text, 'xyz')
+})
+
+await test('check if message exists using .has()', async() => {
+    const xExists = await db.msgs.has('x');
+    const yExists = await db.msgs.has('y');
+    assert.equal(xExists, true)
+    assert.equal(yExists, false)
+})
+
+await test('get size using .size', async() => {
+    const size = await db.msgs.size;
+    assert.equal(size, 1)
+})
+
+await test('get size using .length', async() => {
+    const size = await db.msgs.length;
+    assert.equal(size, 1)
+})
+
+await test('get message using dot notation', async() => {
+    const msg = await db.msgs.x;
+    assert.equal(msg.text, 'xyz')
+})
+
+await test('get message property using dot notation', async() => {
+    const text = await db.msgs.x.text;
+    assert.equal(text, 'xyz')
+})
+
+await test('delete message property', async() => {
+    const wasDeleted = await delete db.msgs.x.text;
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const text = await db.msgs.x.text;
+    assert.equal(text, undefined)
+    assert.equal(wasDeleted, true)
+})
 //
 // await test('delete message using .delete()', async() => {
 //     const wasDeleted = await db.msgs.delete('x');
@@ -225,17 +225,17 @@ async function test(name, callback) {
 //     assert.deepStrictEqual(size, 0)
 // })
 //
-await test('Insert 10000 logs', async() => {
-    const startMs = Date.now();
-    // const promises = [];
-    for(let i = 0; i<10000;i++) {
-        await db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
-    }
-    // await Promise.all(promises);
-    const endMs = Date.now();
-    console.log('10k Write Time', endMs-startMs)
-    // assert.deepStrictEqual(endMs-startMs<2000, true);
-})
+// await test('Insert 10000 logs', async() => {
+//     const startMs = Date.now();
+//     // const promises = [];
+//     for(let i = 0; i<10000;i++) {
+//         await db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
+//     }
+//     // await Promise.all(promises);
+//     const endMs = Date.now();
+//     console.log('10k Write Time', endMs-startMs)
+//     // assert.deepStrictEqual(endMs-startMs<2000, true);
+// })
 //
 // await test('Get 1000', async() => {
 //     const startMs = Date.now();
@@ -281,11 +281,11 @@ await test('Insert 10000 logs', async() => {
 //     assert.equal(lastValue[0]?.text,'LIVE LOG!');
 // })
 //
-await test('clear logs', async() => {
-    await db.logs.clear();
-    const size = await db.logs.size;
-    assert.deepStrictEqual(size, 0)
-})
+// await test('clear logs', async() => {
+//     await db.logs.clear();
+//     const size = await db.logs.size;
+//     assert.deepStrictEqual(size, 0)
+// })
 //
 // await test('call remote function', async() => {
 //     const result = await functions.helloWorld();
@@ -300,45 +300,45 @@ await test('clear logs', async() => {
 
 // LOCAL TESTS
 
-const localJsdb = initApp({connector: 'LOCAL', opHandlers: opHandlers});
-
-await test('Local get map size', async() => {
-    const size = await localJsdb.db.logs.length;
-    assert.deepStrictEqual(size, 0)
-});
-
-await test('Local insert 10000', async() => {
-    const startMs = Date.now();
-    for(let i = 0; i<10000;i++) {
-        localJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
-    }
-    const endMs = Date.now();
-    console.log('10k Local Write Time', endMs-startMs)
-    const size = await localJsdb.db.logs.length;
-    assert.deepStrictEqual(size, 10000)
-});
-
-await test('clear logs', async() => {
-    await localJsdb.db.logs.clear();
-    const size = await localJsdb.db.logs.size;
-    assert.deepStrictEqual(size, 0)
-})
-
-const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
-
-await test('WS insert 10000', async() => {
-    const startMs = Date.now();
-    for(let i = 0; i<10000;i++) {
-        const iStart = performance.now();
-        await wsJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
-        const iEnd = performance.now();
-        // console.log('Individual', iStart)
-    }
-    const endMs = Date.now();
-    console.log('10k WS Write Time', endMs-startMs)
-    const size = await wsJsdb.db.logs.length;
-    assert.deepStrictEqual(size, 10000)
-});
+// const localJsdb = initApp({connector: 'LOCAL', opHandlers: opHandlers});
+//
+// await test('Local get map size', async() => {
+//     const size = await localJsdb.db.logs.length;
+//     assert.deepStrictEqual(size, 0)
+// });
+//
+// await test('Local insert 10000', async() => {
+//     const startMs = Date.now();
+//     for(let i = 0; i<10000;i++) {
+//         localJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
+//     }
+//     const endMs = Date.now();
+//     console.log('10k Local Write Time', endMs-startMs)
+//     const size = await localJsdb.db.logs.length;
+//     assert.deepStrictEqual(size, 10000)
+// });
+//
+// await test('clear logs', async() => {
+//     await localJsdb.db.logs.clear();
+//     const size = await localJsdb.db.logs.size;
+//     assert.deepStrictEqual(size, 0)
+// })
+//
+// const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
+//
+// await test('WS insert 10000', async() => {
+//     const startMs = Date.now();
+//     for(let i = 0; i<10000;i++) {
+//         const iStart = performance.now();
+//         await wsJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
+//         const iEnd = performance.now();
+//         // console.log('Individual', iStart)
+//     }
+//     const endMs = Date.now();
+//     console.log('10k WS Write Time', endMs-startMs)
+//     const size = await wsJsdb.db.logs.length;
+//     assert.deepStrictEqual(size, 10000)
+// });
 
 console.log('PASSED',passedMap.size)
 console.log('FAILED',failedMap.size)

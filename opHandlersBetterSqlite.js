@@ -90,7 +90,7 @@ export const opHandlers = {
             const result = dbCommand('get', `SELECT id, json_extract(value, '$.${safe(path.join('.'))}') as value FROM ${collection} WHERE id = $id`, {
                 id,
             })
-            return result.data.value;
+            return result.data?.value;
         } else {
             const result = dbCommand('get', `SELECT id,value FROM ${collection} WHERE id = $id`, {
                 id,
@@ -130,7 +130,7 @@ export const opHandlers = {
             const result = dbCommand('run', `UPDATE ${collection} SET value = json_remove(value,'$.${safe(path.join('.'))}') WHERE id = $id`, {
                 id,
             })
-            return result.statement.changes > 0;
+            return result.data.changes > 0;
         } else {
             const result = dbCommand('run', `DELETE FROM ${collection} WHERE id = $id`, {
                 id
