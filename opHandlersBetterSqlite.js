@@ -47,7 +47,7 @@ export function forceTable(collection) {
 export function forceIndex(collection, index) {
     forceTable(collection)
     try {
-        const indexName = index.fields.join('_').replace(/\s+/g, ' ').trim()
+        const indexName = safe(index.fields.join('.').replace(/\s+/g, '').trim())
         const columns = index.fields.map(field => {
             const parts = field.replace(/\s+/g, ' ').trim().split(' ')
             if (parts.length > 2) {
@@ -202,8 +202,10 @@ export const opHandlers = {
     },
     find({collection, callbackFn, thisArg}) {
         forceTable(collection);
-        const result = this.getAll({collection});
-        return memoizedRun({array: result, ...thisArg}, `array.find(${callbackFn})`)
+        const parsedWhere = functionToWhere(callbackFn, thisArg);
+        const query = `SELECT * FROM ${collection} WHERE ${parsedWhere.query} LIMIT 1`
+        const result = dbCommand('all', query, parsedWhere.whereQueryParams)
+        return result.data[0] && rowDataToObject(result.data[0]);
     },
     map({collection, callbackFn, thisArg}) {
         forceTable(collection);
