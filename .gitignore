@@ -12,3 +12,4 @@
 /api.test.js
 /service-accounts/
 /database.sqlite
+/fly.toml

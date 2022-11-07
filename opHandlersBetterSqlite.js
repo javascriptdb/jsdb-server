@@ -2,8 +2,9 @@ import {memoizedRun} from "./vm.js";
 import _ from "lodash-es";
 import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
+
 export const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
-db.pragma( 'journal_mode = WAL;' );
+db.pragma('journal_mode = WAL;');
 let preparedStatementMap = new Map();
 
 export const uuid = () => {
@@ -24,16 +25,16 @@ const tablesCreated = new Map();
 function dbCommand(cmd, sql, parameters = {}) {
     try {
         let statement;
-        if(preparedStatementMap.has(sql)) {
-          statement = preparedStatementMap.get(sql);
+        if (preparedStatementMap.has(sql)) {
+            statement = preparedStatementMap.get(sql);
         } else {
-          statement = db.prepare(sql);
-          preparedStatementMap.set(sql, statement)
+            statement = db.prepare(sql);
+            preparedStatementMap.set(sql, statement)
         }
         const data = statement[cmd](parameters)
         return {statement, data}
     } catch (e) {
-        console.error(`Error running: ${sql}`,e)
+        console.error(`Error running: ${sql}`, e)
     }
 }
 
@@ -71,12 +72,12 @@ function rowsToObjects(rows) {
 }
 
 export const opHandlers = {
-     getAll({collection}) {
+    getAll({collection}) {
         forceTable(collection);
         const result = dbCommand('all', `SELECT * FROM ${collection}`)
         return rowsToObjects(result.data || []);
     },
-     slice({collection, start, end}) {
+    slice({collection, start, end}) {
         forceTable(collection);
         const result = dbCommand('all', `SELECT * FROM ${collection} LIMIT $limit OFFSET $offset`, {
             offset: start,
@@ -84,7 +85,7 @@ export const opHandlers = {
         })
         return rowsToObjects(result.data || []);
     },
-     get({collection, id, path = []}) {
+    get({collection, id, path = []}) {
         forceTable(collection);
         if (path.length > 0) {
             const result = dbCommand('get', `SELECT id, json_extract(value, '$.${safe(path.join('.'))}') as value FROM ${collection} WHERE id = $id`, {
@@ -98,20 +99,20 @@ export const opHandlers = {
             return result.data && rowDataToObject(result.data);
         }
     },
-     set({collection, id = uuid(), value, path = []}) {
+    set({collection, id = uuid(), value, path = []}) {
         forceTable(collection);
         const insertSegment = `INSERT INTO ${collection} (id,value) VALUES ($id,json($value))`;
         let result;
         if (path.length > 0) {
             // Make new object from path
             const object = _.set({}, path, value);
-            result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = json_set(value,'$.${safe(path.join('.'))}',json($nestedValue)) RETURNING *`, {
+            result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = json_set(value,'$.${safe(path.join('.'))}',json($nestedValue))`, {
                 id,
                 value: JSON.stringify(object),
                 nestedValue: JSON.stringify(value)
             })
         } else {
-            result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = $value RETURNING *`, {
+            result = dbCommand('run', `${insertSegment} ON CONFLICT (id) DO UPDATE SET value = $value`, {
                 id,
                 value: JSON.stringify(value)
             })
@@ -119,12 +120,12 @@ export const opHandlers = {
         const inserted = result?.statement?.changes === 0;
         return {inserted, insertedId: id}
     },
-     push({collection, value}) {
+    push({collection, value}) {
         forceTable(collection);
         this.set({collection, value});
         return this.size({collection});
     },
-     delete({collection, id, path = []}) {
+    delete({collection, id, path = []}) {
         forceTable(collection);
         if (path.length > 0) {
             const result = dbCommand('run', `UPDATE ${collection} SET value = json_remove(value,'$.${safe(path.join('.'))}') WHERE id = $id`, {
@@ -138,84 +139,83 @@ export const opHandlers = {
             return result.data.changes > 0;
         }
     },
-     has({collection, id}) {
+    has({collection, id}) {
         forceTable(collection);
         const result = dbCommand('get', `SELECT EXISTS(SELECT id FROM ${collection} WHERE id = $id) as found`, {
             id
         })
         return result?.data.found > 0;
     },
-     keys({collection}) {
+    keys({collection}) {
         forceTable(collection);
         const result = dbCommand('all', `SELECT id FROM ${collection}`)
         return result?.data?.map(r => r.id);
     },
-     size({collection}) {
+    size({collection}) {
         forceTable(collection);
         const result = dbCommand('get', `SELECT COUNT(id) as count FROM ${collection}`)
         return result?.data?.count || 0;
     },
-     clear({collection}) {
+    clear({collection}) {
         forceTable(collection);
         dbCommand('run', `DROP TABLE ${collection}`);
         tablesCreated.delete(collection);
         return true;
     },
-     filter({collection, operations}) {
-        console.time('Filter exec')
+    filter({collection, operations}) {
         forceTable(collection);
         const lengthOp = operations.find(op => op.type === 'length');
         let query = `SELECT ${lengthOp?'COUNT(*) as count':'*'} FROM ${collection}`
         let queryParams = {};
 
-        const where = operations.filter(op => op.type === 'filter').map(op => functionToWhere(op.data.callbackFn, op.data.thisArg)).join(' AND ');
-        if(where) query += ` WHERE ${where} `
+        // WHERE
+        operations.filter(op => op.type === 'filter').forEach(op => {
+            const parsedWhere = functionToWhere(op.data.callbackFn, op.data.thisArg);
+            query += ` WHERE ${parsedWhere.query} `
+            queryParams = {...queryParams, ...parsedWhere.whereQueryParams}
+        });
 
-        const orderBy = operations.filter(op => op.type === 'orderBy').map(op => `json_extract(value,'$.${op.data.property}') ${op.data.order}`).join(' ');
-        if(orderBy) query += ` ORDER BY ${orderBy} `
+        const orderBy = operations.filter(op => op.type === 'orderBy').map(op => `json_extract(value,'$.${safe(op.data.property)}') ${safe(op.data.order)}`).join(' ');
+        if (orderBy) query += ` ORDER BY ${orderBy} `
 
         const sliceOp = operations.find(op => op.type === 'slice');
-        if(sliceOp) {
+        if (sliceOp) {
             query += ` LIMIT $limit OFFSET $offset `;
             queryParams.offset = sliceOp?.data.start;
             queryParams.limit = sliceOp?.data.end - sliceOp?.data.start;
         }
 
-        if(lengthOp) {
+        if (lengthOp) {
             // Return without running map operation, doesn't make sense to waste time mapping and then counting.
             const result = dbCommand('get', query, queryParams)
-            console.timeEnd('Filter exec')
             return result?.data?.count;
-
         } else {
             const result = dbCommand('all', query, queryParams)
             const mapOp = operations.find(op => op.type === 'map');
             const objects = rowsToObjects(result.data || []);
-            if(mapOp) {
-                console.timeEnd('Filter exec')
+            if (mapOp) {
                 return memoizedRun({array: objects, ...mapOp.data.thisArg}, `array.map(${mapOp.data.callbackFn})`)
             } else {
-                console.timeEnd('Filter exec')
                 return objects;
             }
         }
     },
-     find({collection, callbackFn, thisArg}) {
+    find({collection, callbackFn, thisArg}) {
         forceTable(collection);
         const result = this.getAll({collection});
         return memoizedRun({array: result, ...thisArg}, `array.find(${callbackFn})`)
     },
-     map({collection, callbackFn, thisArg}) {
+    map({collection, callbackFn, thisArg}) {
         forceTable(collection);
         const result = this.getAll({collection});
         return memoizedRun({array: result, ...thisArg}, `array.map(${callbackFn})`)
     }
 }
 
-function safe(string) {
-    string.split('.').forEach(segment => {
-        if(!/^\w+$/.test(segment)) throw new Error('Unsafe string. Only alphanumerical chars allowed.')
-    })
+export function safe(string) {
+    if (!/^\w+$/.test(string.replaceAll('.', ''))) {
+        throw new Error(`Unsafe string (${string}). Only alphanumerical chars allowed.`)
+    }
     return string;
 }
 

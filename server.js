@@ -34,8 +34,9 @@ wsServer.on('connection', socket => {
       const parsedMessage = JSON.parse(message);
       try {
         let token;
-        if(parsedMessage.authorization) {
-          token = jwt.verify(parsedMessage.authorization.replaceAll('Bearer ',''), process.env.JWT_SECRET);
+        const bearer = parsedMessage.authorization?.replace('Bearer ','').replace('undefined','');
+        if(bearer) {
+            token = jwt.verify(bearer, process.env.JWT_SECRET);
         }
         const ruleFunction = await resolveMiddlewareFunction('rules', parsedMessage.collection, parsedMessage.operation);
         const ruleResult = await ruleFunction({...parsedMessage, user: token?.user})
@@ -120,7 +121,7 @@ wsServer.on('connection', socket => {
 
       } else if(parsedMessage.operation === 'push') {
         const {collection, operation, eventName} = parsedMessage;
-        const id = opHandlers.push(parsedMessage);
+        const id = opHandlers.set(parsedMessage);
         socket.send(JSON.stringify({
           value: id,
           eventName,
@@ -181,7 +182,8 @@ app.use(express.json({
 app.use((req, res, next) => {
   req.realtimeListeners = realtimeListeners;
   const authorization = req.get('Authorization');
-  if (authorization) {
+  const bearer = authorization?.replaceAll('Bearer ','');
+  if (bearer) {
     passport.authenticate('jwt', { session: false })(req, res, next);
   } else {
     next()

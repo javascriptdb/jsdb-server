@@ -43,7 +43,7 @@ await test('get values using .values()', async() => {
     assert.deepStrictEqual(Array.from(values), [{id:'x',text: 'xyz'}])
 })
 
-await test('get message using .get()', async() => {
+await test('get message by id using .get()', async() => {
     const startMs = Date.now();
     const msg = await db.msgs.get('x');
     const endMs = Date.now();
@@ -227,41 +227,40 @@ await test('clear msgs', async() => {
 
 await test('Insert 10000 logs', async() => {
     const startMs = Date.now();
-    // const promises = [];
+
     for(let i = 0; i<10000;i++) {
         await db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
     }
-    // await Promise.all(promises);
+
     const endMs = Date.now();
     console.log('10k Write Time', endMs-startMs)
-    // assert.deepStrictEqual(endMs-startMs<2000, true);
 })
 
-await test('Get 1000', async() => {
+await test('Get 10k using .values()', async() => {
     const startMs = Date.now();
     await db.logs.values();
     const endMs = Date.now();
-    console.log('Get 1000 Time', endMs-startMs)
-    // assert.deepStrictEqual(endMs-startMs<2000, true);
+    console.log('Get 10k Time', endMs-startMs)
+    assert.deepStrictEqual(endMs-startMs<2000, true);
 })
 
-await test('Query 1000 logs', async() => {
-    const allLogs = await db.logs.keys()
+await test('Query 10k logs', async() => {
+    const keys = await db.logs.keys()
     const startMs = Date.now();
-    for(const id of allLogs) {
+    for(const id of keys) {
         await db.logs.get(id);
     }
     const endMs = Date.now();
-    console.log('Query Read Time', endMs-startMs)
-    // assert.deepStrictEqual(endMs-startMs<2000, true);
+    console.log('10k Query Read Time', endMs-startMs)
+    assert.deepStrictEqual(endMs-startMs<10000, true);
 })
 
 await test('Find first log', async() => {
     const startMs = Date.now();
     await db.logs.filter(log => log.i === 999)
     const endMs = Date.now();
-    console.log('Find first time', endMs-startMs)
-    // assert.deepStrictEqual(endMs-startMs<2000, true);
+    console.log('Find first log', endMs-startMs)
+    assert.deepStrictEqual(endMs-startMs<10, true);
 })
 
 await test('clear logs', async() => {
@@ -271,9 +270,10 @@ await test('clear logs', async() => {
 })
 
 await test('Subscribe filter', async () => {
+    await db.logs.clear();
     let lastValue;
     const unsubscribe = db.logs.filter(log => log.text === 'LIVE LOG!').subscribe(value => {
-        lastValue = value
+        lastValue = value;
     });
     await db.logs.push({type:'info',text:'LIVE LOG!',date: new Date()});
     await new Promise(resolve => setTimeout(resolve, 2000))
@@ -292,53 +292,60 @@ await test('call remote function', async() => {
     assert.deepStrictEqual(result.message, 'IT WORKS!')
 });
 
-await test('call function & remotely insert 1000 records', async() => {
+await test('call function & remotely insert 10k records', async() => {
     const result = await functions.remoteInserts();
-    console.log('Remote insert 1000 time', result.time)
-    assert.deepStrictEqual(result.time < 100, true)
+    console.log('10k Remote insert time', result.time)
+    assert.deepStrictEqual(result.time < 300, true)
 });
 
 // LOCAL TESTS
 
-// const localJsdb = initApp({connector: 'LOCAL', opHandlers: opHandlers});
-//
-// await test('Local get map size', async() => {
-//     const size = await localJsdb.db.logs.length;
-//     assert.deepStrictEqual(size, 0)
-// });
-//
-// await test('Local insert 10000', async() => {
-//     const startMs = Date.now();
-//     for(let i = 0; i<10000;i++) {
-//         localJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
-//     }
-//     const endMs = Date.now();
-//     console.log('10k Local Write Time', endMs-startMs)
-//     const size = await localJsdb.db.logs.length;
-//     assert.deepStrictEqual(size, 10000)
-// });
-//
-// await test('clear logs', async() => {
-//     await localJsdb.db.logs.clear();
-//     const size = await localJsdb.db.logs.size;
-//     assert.deepStrictEqual(size, 0)
-// })
-//
-// const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
-//
-// await test('WS insert 10000', async() => {
-//     const startMs = Date.now();
-//     for(let i = 0; i<10000;i++) {
-//         const iStart = performance.now();
-//         await wsJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
-//         const iEnd = performance.now();
-//         // console.log('Individual', iStart)
-//     }
-//     const endMs = Date.now();
-//     console.log('10k WS Write Time', endMs-startMs)
-//     const size = await wsJsdb.db.logs.length;
-//     assert.deepStrictEqual(size, 10000)
-// });
+const localJsdb = initApp({connector: 'LOCAL', opHandlers: opHandlers});
+await test('clear logs', async() => {
+    await localJsdb.db.logs.clear();
+    const size = await localJsdb.db.logs.size;
+    assert.deepStrictEqual(size, 0)
+})
+
+await test('Local insert 10000', async() => {
+    const startMs = Date.now();
+    for(let i = 0; i<10000;i++) {
+        localJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
+    }
+    const endMs = Date.now();
+    console.log('10k Local Write Time', endMs-startMs)
+    const size = await localJsdb.db.logs.length;
+    assert.deepStrictEqual(size, 10000)
+});
+
+await test('clear logs', async() => {
+    await localJsdb.db.logs.clear();
+    const size = await localJsdb.db.logs.size;
+    assert.deepStrictEqual(size, 0)
+})
+
+// // WS TESTS
+
+const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
+
+await test('clear logs', async() => {
+    await wsJsdb.db.logs.clear();
+    const size = await wsJsdb.db.logs.size;
+    assert.deepStrictEqual(size, 0)
+})
+
+await test('WS insert 10k', async() => {
+    const startMs = Date.now();
+    for(let i = 0; i<10000;i++) {
+        await wsJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
+    }
+    const endMs = Date.now();
+    const time = endMs-startMs;
+    console.log('10k WS Write Time', endMs-startMs)
+    const size = await wsJsdb.db.logs.length;
+    assert.deepStrictEqual(time < 5000, true)
+    assert.deepStrictEqual(size, 10000)
+});
 
 console.log('PASSED',passedMap.size)
 console.log('FAILED',failedMap.size)
