@@ -2,23 +2,11 @@ import {memoizedRun} from "./vm.js";
 import _ from "lodash-es";
 import {functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
+import * as crypto from "crypto";
 
 export const db = new Database(process.env.SQLITE_DATABASE_PATH || './database.sqlite');
 db.pragma('journal_mode = WAL;');
 let preparedStatementMap = new Map();
-
-export const uuid = () => {
-    const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
-
-    let autoId = ''
-
-    for (let i = 0; i < 24; i++) {
-        autoId += CHARS.charAt(
-            Math.floor(Math.random() * CHARS.length)
-        )
-    }
-    return autoId
-}
 
 const tablesCreated = new Map();
 
@@ -99,7 +87,7 @@ export const opHandlers = {
             return result.data && rowDataToObject(result.data);
         }
     },
-    set({collection, id = uuid(), value, path = []}) {
+    set({collection, id = crypto.randomUUID(), value, path = []}) {
         forceTable(collection);
         const insertSegment = `INSERT INTO ${collection} (id,value) VALUES ($id,json($value))`;
         let result;
