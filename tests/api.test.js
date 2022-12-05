@@ -1,9 +1,9 @@
 import {start} from "../server.js";
-import {setServerUrl, db, auth, functions, initApp} from "@jsdb/sdk";
+import {initApp} from "@jsdb/sdk";
 import * as assert from "assert";
 import {opHandlers} from "../opHandlersBetterSqlite.js";
 start();
-setServerUrl('http://localhost:3001');
+const {db, auth, functions} = initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
 
 const passedMap = new Map();
 const failedMap = new Map();
@@ -18,13 +18,14 @@ async function test(name, callback) {
     }
 }
 
-// try {
-//     await auth.createAccount({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
-//     await auth.signIn({email: `test32edadas@healthtree.org`, password: 'dhs87a6dasdg7as8db68as67da'})
-// } catch (e) {
-//
-// }
-//
+await test('Can create account', async() => {
+    await auth.createAccount({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
+})
+
+await test('Can sign in to account', async() => {
+    await auth.signIn({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
+})
+
 await test('Initial clear map using .clear()', async() => {
     await db.msgs.clear();
 })
@@ -123,12 +124,12 @@ await test('find message using .find()', async() => {
 })
 
 await test('find message using .find() and thisArg', async() => {
-    const msg = await db.msgs.find(msg => msg.text === self.text, {self:{text:'FUN!'}});
+    const msg = await db.msgs.find(msg => msg.text === this.text, {text:'FUN!'});
     assert.equal(msg.text, 'FUN!')
 })
 
 await test('filter message using .filter() and thisArg', async() => {
-    const msgs = await db.msgs.filter(msg => msg.text === self.text, {self:{text:'FUN!'}});
+    const msgs = await db.msgs.filter(msg => msg.text === this.text, {text:'FUN!'});
     assert.equal(msgs.length, 1)
     assert.equal(msgs[0].text, 'FUN!')
 })
@@ -151,7 +152,7 @@ await test('filter message using .filter() & like', async() => {
 })
 
 await test('filter message using .filter() & like from thisArg', async() => {
-    const msgs = await db.msgs.filter(msg => this.like(msg.text, ctx.like), {ctx: {like:'%U%'}});
+    const msgs = await db.msgs.filter(msg => this.like(msg.text, this.like), {like:'%U%'});
     assert.equal(msgs.length, 1)
     assert.equal(msgs[0].text, 'FUN!')
 })
@@ -169,7 +170,7 @@ await test('slice messages to get 1 message', async() => {
 })
 
 await test('filter message using chainable .filter .sortBy .slice', async() => {
-    const msgs = await db.msgs.filter(msg => msg.text === self.text, {self:{text:'FUN!'}})
+    const msgs = await db.msgs.filter(msg => msg.text === this.text, {text:'FUN!'})
         .orderBy('date','ASC')
         .slice(0,1);
     assert.equal(msgs.length, 1);
@@ -187,10 +188,16 @@ await test('filter message using chainable .filter .map', async() => {
 })
 
 await test('map msgs using .map()', async() => {
-    const texts = await db.msgs.map(msg => msg.text);
-    assert.equal(texts.length, 1)
-    assert.equal(texts[0], 'FUN!')
+    const texts = await db.msgs.map(msg => ({text: msg.text}));
+    assert.equal(texts.length, 1);
+    assert.equal(texts[0].text, 'FUN!');
 })
+await test('map msgs using .map()', async() => {
+    const texts = await db.msgs.map(msg => this.path, {path:'msg.text'});
+    assert.equal(texts.length, 1);
+    assert.equal(texts[0], 'FUN!');
+})
+
 
 await test('iterate using forEach', async() => {
     const msgs = [];

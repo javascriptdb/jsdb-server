@@ -11,6 +11,7 @@
   "author": "jpcapdevila",
   "license": "SSPL",
   "dependencies": {
+    "@babel/standalone": "^7.20.4",
     "@jsdb/sdk": "^0.0.36",
     "acorn": "^8.7.1",
     "adm-zip": "^0.5.9",
@@ -21,6 +22,7 @@
     "estree-walker": "^3.0.1",
     "express": "^4.17.3",
     "express-rate-limit": "^6.3.0",
+    "js-interpreter": "^3.0.1",
     "jsonwebtoken": "^8.5.1",
     "lodash-es": "^4.17.21",
     "passport": "^0.5.2",

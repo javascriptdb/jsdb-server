@@ -1,6 +1,6 @@
 import {memoizedRun} from "./vm.js";
 import _ from "lodash-es";
-import {functionToWhere} from "./parser.js";
+import {functionToSelect, functionToWhere} from "./parser.js";
 import Database from 'better-sqlite3';
 import * as crypto from "crypto";
 
@@ -191,14 +191,43 @@ export const opHandlers = {
     find({collection, callbackFn, thisArg}) {
         forceTable(collection);
         const parsedWhere = functionToWhere(callbackFn, thisArg);
-        const query = `SELECT * FROM ${collection} WHERE ${parsedWhere.query} LIMIT 1`
-        const result = dbCommand('all', query, parsedWhere.whereQueryParams)
+        const query = `SELECT * FROM ${collection} WHERE ${parsedWhere.query} LIMIT 1`;
+        const result = dbCommand('all', query, parsedWhere.whereQueryParams);
         return result.data[0] && rowDataToObject(result.data[0]);
     },
     map({collection, callbackFn, thisArg}) {
         forceTable(collection);
-        const result = this.getAll({collection});
-        return memoizedRun({array: result, ...thisArg}, `array.map(${callbackFn})`)
+        if(process.env.ALLOW_EVAL) {
+            const result = this.getAll({collection});
+            return memoizedRun({array: result, ...thisArg}, `array.map(${callbackFn})`);
+        } else {
+            const {select, singleValue} = functionToSelect(callbackFn, thisArg);
+            const query = `SELECT ${select} FROM ${collection}`;
+            const result = dbCommand('all', query);
+            if(singleValue) {
+                return (result.data || []).map(data => {
+                    try {
+                        return JSON.parse(data.value)
+                    } catch (e) {
+                        return data.value;
+                    }
+                })
+            } else {
+                return (result.data || []).map(data => {
+                    const result = {id: data.id};
+                    Object.keys(data).forEach(key => {
+                        if(key !== 'id'){
+                            try {
+                                result[key] = JSON.parse(data[key])
+                            } catch (e) {
+                                result[key] = data[key];
+                            }
+                        }
+                    })
+                    return result;
+                })
+            }
+        }
     }
 }
 

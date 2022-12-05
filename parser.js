@@ -22,7 +22,7 @@ function getOperator(_operator) {
   return operator;
 }
 
-export function functionToWhere(functionString, thisArg) {
+export const functionToWhere = _.memoize(function functionToWhere(functionString, thisArg) {
   const ast = acorn.parse(functionString, {});
   const arrowFunction = ast.body[0].expression;
   assert.equal(arrowFunction.type, 'ArrowFunctionExpression', 'Filter or find callbacks should be arrow functions.')
@@ -57,18 +57,19 @@ export function functionToWhere(functionString, thisArg) {
           likeValue = node.arguments[1].value;
         } else if(node.arguments[1].type === 'MemberExpression') {
           const likeValuePath = nodeString(functionString, node.arguments[1]);
-          likeValue = _.get(thisArg, likeValuePath)
+          likeValue = _.get({this:thisArg}, likeValuePath)
         }
         string += `json_extract(value,'$${safe(columnPath)}') ${operator} ${addAsQueryParam(likeValue)}`
         this.skip()
       }
       if (node.type === 'MemberExpression') {
-        if (node.object.name === param) {
-          const path = functionString.substring(node.object.end, node.end)
+        const memberExpressionString = nodeString(functionString,node);
+        if (memberExpressionString.startsWith(param+'.')) {
+          const path = memberExpressionString.replace(param,'');
           string += `json_extract(value,'$${safe(path)}')`
         } else {
           const path = nodeString(functionString, node);
-          string += addAsQueryParam(_.get(thisArg, path))
+          string += addAsQueryParam(_.get({this:thisArg}, path))
         }
         if (prop === 'left') {
           string += getOperator(parent.operator)
@@ -107,8 +108,37 @@ export function functionToWhere(functionString, thisArg) {
     }
   });
   return {query: string.replaceAll(`"`, `'`), whereQueryParams}
+})
+
+export const functionToSelect = _.memoize(function functionToSelect(functionString, thisArg) {
+  const ast = acorn.parse(functionString, {});
+  const arrowFunction = ast.body[0].expression;
+  assert.equal(arrowFunction.type, 'ArrowFunctionExpression', 'Map callbacks should be arrow functions.')
+  assert.equal(arrowFunction.params.length, 1, 'Map callbacks only receive one argument.')
+  const param = arrowFunction.params[0].name;
+  let select = ``;
+  if(arrowFunction.body.type === 'ObjectExpression') {
+    arrowFunction.body.properties.forEach(property => {
+      assert.equal(property.key.type, 'Identifier', 'Each key on the map object should be a string e.j "name"')
+      assert.equal(property.value.type, 'MemberExpression', 'Each value on the map object should be a member expression e.j "user.name"')
+      select += `${memberExpressionToPath(functionString,param,property.value, thisArg)} as ${safe(property.key.name)}`;
+    })
+    return {select, singleValue: false};
+  } else if(arrowFunction.body.type === 'MemberExpression'){
+    select += `${memberExpressionToPath(functionString,param,arrowFunction.body, thisArg)} as value`;
+    return {select, singleValue: true};
+  }
+})
+
+function memberExpressionToPath(functionString,param,memberExpression,thisArg) {
+  const memberExpressionString = nodeString(functionString,memberExpression);
+  let path = memberExpressionString;
+  if(!memberExpressionString.startsWith(param+'.')) { // Expression referencing the arrow fn param
+    path = _.get({this:thisArg}, memberExpressionString);
+  }
+  return `json_extract(value,'$${safe(path?.replace(param,''))}')`;
 }
 
-function nodeString(fn, node) {
-  return fn.substring(node.start, node.end)
+function nodeString(functionString, node) {
+  return functionString.substring(node.start, node.end)
 }

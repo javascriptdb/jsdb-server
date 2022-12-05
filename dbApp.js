@@ -54,7 +54,9 @@ app.post('/find', async (req, res, next) => {
 
 app.post('/map', async (req, res, next) => {
     try {
+        console.time('map')
         const mapResult = opHandlers.map(req.body);
+        console.timeEnd('map');
         res.send(mapResult);
         next();
     } catch (e) {

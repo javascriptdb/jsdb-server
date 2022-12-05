@@ -54,7 +54,7 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        const callbackFn = ((user) => user.credentials.email === email).toString()
+        const callbackFn = ((user) => user.credentials.email === this.email).toString()
         const user = opHandlers.find({collection: 'users',callbackFn,thisArg:{email}})
 
         if(!bcrypt.compareSync(password, user.credentials.password)){
@@ -96,7 +96,7 @@ app.post(
         try {
           if (err || !user) {
               console.error(err)
-            const error = new Error('An error occurred.');
+            const error = new Error(info.message || 'An error occurred.');
             return next(error);
           }
 
