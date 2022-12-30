@@ -12,6 +12,7 @@ import dbApp from "./dbApp.js";
 import functionsApp from "./functionsApp.js";
 import EventEmitter from 'events';
 import _ from 'lodash-es';
+import {setServerUrl, setApiKey} from '@jsdb/sdk';
 import {
   functions,
   importFromBase64,
@@ -178,11 +179,13 @@ app.use(express.json({
   limit: '1mb'
 }));
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) =>{
   req.realtimeListeners = realtimeListeners;
   const authorization = req.get('Authorization');
   if (authorization) {
-    passport.authenticate('jwt', { session: false })(req, res, next);
+    passport.authenticate('token-custom', {
+      session: false
+    })(req, res, next);
   } else {
     next()
   }
@@ -223,6 +226,8 @@ export function start() {
       wsServer.emit('connection', socket, request);
     });
   });
+  setServerUrl(process.env.SERVER_URL)
+  setApiKey(process.env.API_KEY)
 }
 
 if (!runningAsLibrary) {
